@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="360" viewBox="0 0 1280 360" role="img" aria-labelledby="title desc">
+ <title id="title">Flow Boundary</title><desc id="desc">Intentional local context boundaries for Omarchy</desc><rect width="1280" height="360" fill="#16130f"/><path d="M61 181h78l27-67 42 137 39-94 25 24h55" fill="none" stroke="#ffb86b" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/><circle cx="61" cy="181" r="12" fill="#ffb86b"/><circle cx="327" cy="181" r="12" fill="#ffb86b"/>
+ <text x="385" y="154" fill="#fff5e8" font-family="monospace" font-size="59" font-weight="700" letter-spacing="5">FLOW BOUNDARY</text><text x="389" y="211" fill="#d9bfa5" font-family="monospace" font-size="24" letter-spacing="3">ARRIVE WITH INTENT. LEAVE WITHOUT DRAGGING THE LAST THING ALONG.</text><text x="389" y="287" fill="#ffb86b" font-family="monospace" font-size="18">PRIVATE ARRIVE / LEAVE LEDGER · NO CALENDAR ACCESS</text>
+</svg>
