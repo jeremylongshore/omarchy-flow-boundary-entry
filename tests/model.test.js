@@ -1,45 +1,6 @@
-const test = require("node:test")
-const assert = require("node:assert/strict")
-const fs = require("node:fs")
-const path = require("node:path")
-
-const Model = require("../Model.js")
-
-// TEMPLATE: capture real API responses into tests/fixtures/ and load them
-// here. Tests run against captured bodies, never the network.
-const fixture = (name) =>
-  fs.readFileSync(path.join(__dirname, "fixtures", name), "utf8")
-
-test("clean strips angle brackets so AutoText can never promote to StyledText", () => {
-  assert.equal(Model.clean('<img src="http://x/y.png">Bo'), 'img src="http://x/y.png"Bo')
-})
-
-test("clean strips control characters", () => {
-  assert.equal(Model.clean("a\x00b\x1fc\x7fd"), "abcd")
-})
-
-test("clean caps pathological length", () => {
-  assert.equal(Model.clean("x".repeat(500), 64).length, 64)
-})
-
-test("clean tolerates null and undefined", () => {
-  assert.equal(Model.clean(null), "")
-  assert.equal(Model.clean(undefined), "")
-})
-
-test("parseExample returns [] on malformed input, keeping last-good state", () => {
-  assert.deepEqual(Model.parseExample("not json"), [])
-  assert.deepEqual(Model.parseExample(""), [])
-  assert.deepEqual(Model.parseExample(null), [])
-})
-
-test("parseExample maps rows through clean", () => {
-  const rows = Model.parseExample(JSON.stringify([{ name: "<b>alpha</b>", value: "1" }]))
-  assert.equal(rows.length, 1)
-  assert.equal(rows[0].name, "balpha/b")
-})
-
-test("pillText is empty when there is nothing to say", () => {
-  assert.equal(Model.pillText([]), "")
-  assert.equal(Model.pillText(null), "")
-})
+const test=require("node:test"),assert=require("node:assert/strict"),M=require("../Model.js")
+const now=1700000000000
+test("parse rejects malformed local ledgers",()=>{assert.deepEqual(M.parse("bad",now),[]);assert.deepEqual(M.parse(JSON.stringify({events:{}}),now),[])})
+test("parse accepts only timestamped arrive and leave events",()=>{const r=M.parse(JSON.stringify({events:[{kind:"arrive",at:1699999940},{kind:"bad",at:1},{kind:"leave",at:1699992800}]}),now);assert.deepEqual(r,[{kind:"arrive",age:"1M"},{kind:"leave",age:"2H"}])})
+test("parse covers event and clock edge cases",()=>{const r=M.parse(JSON.stringify({events:[null,{kind:"arrive",at:1700000010},{kind:"leave",at:1699999990},{kind:"arrive",at:"bad"}]}),now);assert.deepEqual(r,[{kind:"arrive",age:"NOW"},{kind:"leave",age:"NOW"}]);assert.equal(M.tooltipText([{kind:"arrive"}]),"Last boundary: arrive")})
+test("parse bounds hostile ledgers and labels both states",()=>{const r=M.parse(JSON.stringify({events:Array.from({length:100},()=>({kind:"arrive",at:1}))}),now);assert.equal(r.length,M.MAX_EVENTS);assert.equal(M.pillText([]),"FLOW");assert.equal(M.pillText([{kind:"leave"}]),"PAUSE");assert.match(M.tooltipText([]),/intentional/)})

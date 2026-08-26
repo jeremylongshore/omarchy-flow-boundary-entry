@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Local-only transition ledger. It records intent, never calendar contents.
+set -euo pipefail
+root="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy-flow-boundary"
+log="$root/boundaries.jsonl"
+mkdir -p "$root"
+record() {
+  local kind="$1" now
+  [[ "$kind" == arrive || "$kind" == leave ]] || exit 2
+  now="$(date +%s)"
+  jq -cn --arg kind "$kind" --argjson at "$now" '{kind:$kind,at:$at}' >> "$log"
+  tail -n 32 "$log" > "$log.tmp" && mv "$log.tmp" "$log"
+  jq -cn --arg kind "$kind" --argjson at "$now" '{kind:$kind,at:$at}'
+}
+scan() { [[ -s "$log" ]] && jq -sc '{events:.}' "$log" || jq -cn '{events:[]}'; }
+case "${1:---scan}" in --scan) scan ;; --arrive) record arrive ;; --leave) record leave ;; *) exit 2 ;; esac
