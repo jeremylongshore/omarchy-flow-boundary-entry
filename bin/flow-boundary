@@ -1,16 +1,47 @@
 #!/usr/bin/env bash
 # Local-only transition ledger. It records intent, never calendar contents.
 set -euo pipefail
+
+# The ledger is PRIVATE: umask before creation means the directory is born 0700
+# and the file 0600, with no permissive window. (Marketplace review, #2903.)
+umask 077
 root="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy-flow-boundary"
 log="$root/boundaries.jsonl"
 mkdir -p "$root"
+
+# The ledger path is user-writable mutable state, so every read treats it as
+# untrusted input: a REGULAR file only (a symlink could point anywhere; a FIFO
+# would hang the jq the QML poller buffers), and a byte ceiling checked before
+# jq ever opens it. The writer keeps 32 lines, so the ceiling is generous; an
+# oversized or replaced file reads as an empty ledger rather than being parsed.
+log_max_bytes=16384
+log_readable() {
+  [[ -f "$log" && ! -L "$log" ]] || return 1
+  local size; size="$(stat -c %s "$log" 2>/dev/null || printf 0)"
+  [[ "$size" =~ ^[0-9]+$ ]] && (( size > 0 && size <= log_max_bytes ))
+}
+
 record() {
-  local kind="$1" now
+  local kind="$1" now tmp
   [[ "$kind" == arrive || "$kind" == leave ]] || exit 2
   now="$(date +%s)"
-  jq -cn --arg kind "$kind" --argjson at "$now" '{kind:$kind,at:$at}' >> "$log"
-  tail -n 32 "$log" > "$log.tmp" && mv "$log.tmp" "$log"
+  # Rewrite through a mktemp file created inside the private directory and
+  # rename it into place. The previous `tail > "$log.tmp"` used a PREDICTABLE
+  # path that follows a pre-existing symlink, allowing an unintended user-file
+  # overwrite; mktemp+rename closes both holes and is atomic besides.
+  tmp="$(mktemp "$root/.boundaries.XXXXXX")"
+  if log_readable; then timeout 2 tail -n 31 "$log" > "$tmp" 2>/dev/null || : > "$tmp"; fi
+  jq -cn --arg kind "$kind" --argjson at "$now" '{kind:$kind,at:$at}' >> "$tmp"
+  mv -f "$tmp" "$log"
   jq -cn --arg kind "$kind" --argjson at "$now" '{kind:$kind,at:$at}'
 }
-scan() { [[ -s "$log" ]] && jq -sc '{events:.}' "$log" || jq -cn '{events:[]}'; }
+scan() {
+  # Defense in depth: even a valid-size ledger goes through jq under a timeout,
+  # and stdout is capped so the QML StdioCollector can never buffer unbounded.
+  if log_readable; then
+    timeout 2 jq -sc '{events:.}' "$log" 2>/dev/null | head -c 65536 || jq -cn '{events:[]}'
+  else
+    jq -cn '{events:[]}'
+  fi
+}
 case "${1:---scan}" in --scan) scan ;; --arrive) record arrive ;; --leave) record leave ;; *) exit 2 ;; esac
