@@ -1,0 +1,14 @@
+{
+  "fingerprint": "6fc5e276711ab0536653bf649b68ae6b7b4aff14920c0932d21301dab45bb8b9",
+  "sourceCommit": "0bb015c7d59930b73747f1aa50964aa3860e22d1",
+  "sourceDirty": false,
+  "sourcePackageSha256": "501c75d9de18a5a81b7f217a7d1179f76e4ffe5c1e4d51294e8ffbc5be74aa70",
+  "remotePackageSha256": "501c75d9de18a5a81b7f217a7d1179f76e4ffe5c1e4d51294e8ffbc5be74aa70",
+  "rig": "intent-ops-buzz/omarchy-rig",
+  "packageBoundary": "runtime tree; generated proof receipts, reports, tests, developer scripts, and marketplace preview excluded",
+  "evidenceBoundary": "isolated real Omarchy shell and QML under a dedicated headless compositor; live plugin IPC writes through first-party inline widget settings; persisted history verified after a full shell restart; direct full-frame grim capture with no crop or image post-processing",
+  "previewSha256": "6ff41929c54fb818a816096ec4366dad92bc6141a5ef9f09dea82f7276948d5f",
+  "dimensions": "1280 x 720",
+  "nonblackCoverage": 0.769618,
+  "capturedAt": "2026-08-29T22:23:11Z"
+}
