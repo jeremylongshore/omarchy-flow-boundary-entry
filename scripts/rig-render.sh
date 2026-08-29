@@ -64,7 +64,7 @@ trap 'rm -f "$TGZ"' EXIT
 # tests/ and scripts/ are not shipped to a user, so they are not shipped here.
 tar czf "$TGZ" -C "$TARGET" --exclude=.git --exclude=tests --exclude=scripts \
   --exclude=node_modules --exclude=reports --exclude=coverage \
-  --exclude=.rig-proof.json --exclude=.render-proof.json . || {
+  --exclude=.rig-proof.json --exclude=.render-proof.json --exclude=preview.png . || {
   echo "rig-render: could not package the tree" >&2; exit 2; }
 ARCHIVE_SHA="$(sha256sum "$TGZ" | cut -d' ' -f1)"
 
@@ -240,6 +240,7 @@ jq -n --arg fp "$FP" --arg commit "$SOURCE_COMMIT" --argjson dirty "$SOURCE_DIRT
   --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   '{fingerprint:$fp,sourceCommit:$commit,sourceDirty:$dirty,
     sourcePackageSha256:$archive,remotePackageSha256:$remote,rig:$rig,
+    packageBoundary:"runtime tree; generated proof receipts, reports, tests, developer scripts, and marketplace preview excluded",
     evidenceBoundary:"isolated real Omarchy shell and QML under a dedicated headless compositor; live plugin IPC writes through first-party inline widget settings; persisted history verified after a full shell restart; direct full-frame grim capture with no crop or image post-processing",
     previewSha256:$sha,dimensions:$dimensions,nonblackCoverage:($coverage|tonumber),capturedAt:$at}' \
   > "$TARGET/.render-proof.json"

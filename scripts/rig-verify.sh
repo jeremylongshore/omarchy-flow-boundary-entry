@@ -47,7 +47,7 @@ TGZ="$(mktemp -t rigcheck-XXXXXX.tgz)"
 trap 'rm -f "$TGZ"' EXIT
 tar czf "$TGZ" -C "$TARGET" --exclude=.git --exclude=tests --exclude=node_modules \
   --exclude=reports --exclude=coverage --exclude=.rig-proof.json \
-  --exclude=.render-proof.json . || {
+  --exclude=.render-proof.json --exclude=preview.png . || {
   echo "rig-verify: could not package the tree" >&2; exit 2; }
 ARCHIVE_SHA="$(sha256sum "$TGZ" | cut -d' ' -f1)"
 
@@ -102,6 +102,7 @@ jq -n --arg fp "$FP" --arg commit "$SOURCE_COMMIT" --argjson dirty "$SOURCE_DIRT
       --argjson at "$(date +%s)" --arg iso "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   '{fingerprint:$fp, sourceCommit:$commit, sourceDirty:$dirty,
     sourcePackageSha256:$archive, remotePackageSha256:$remote, rig:$rig,
+    packageBoundary:"validation tree; generated proof receipts, reports, tests, dependencies, and marketplace preview excluded",
     evidenceBoundary:"real Omarchy validator and qmllint; no live compositor render",
     omarchyPluginValidate:$v, qmllintErrors:$q,
     validatedAtEpoch:$at, validatedAt:$iso}' > "$TARGET/.rig-proof.json"
