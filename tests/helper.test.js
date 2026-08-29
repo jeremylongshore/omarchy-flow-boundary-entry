@@ -3,7 +3,7 @@ const assert = require("node:assert/strict")
 const fs = require("node:fs")
 const os = require("node:os")
 const path = require("node:path")
-const { spawnSync } = require("node:child_process")
+const { spawn, spawnSync } = require("node:child_process")
 const helper = path.join(__dirname, "..", "bin", "flow-boundary")
 
 function setup() {
@@ -57,5 +57,42 @@ test("no predictable .tmp path is left behind or used", () => {
   fs.symlinkSync(victim, path.join(dirOf(x), "boundaries.jsonl.tmp"))
   run(x.env, "--arrive")
   assert.equal(fs.readFileSync(victim, "utf8"), "precious")
+  fs.rmSync(x.root, { recursive: true, force: true })
+})
+
+// Marketplace security review (#2903): race the exact object classes called
+// out by the maintainer. These are not happy-path symlink checks. A competing
+// same-UID process repeatedly substitutes the final entry, the newly-created
+// temporary entry, and the parent directory while records are published.
+test("same-UID final and temporary entry swaps never write through to a victim", () => {
+  const x = setup(); const dir = dirOf(x)
+  fs.mkdirSync(dir, { recursive: true })
+  const victim = path.join(x.root, "victim-final-temp"); fs.writeFileSync(victim, "precious")
+  const racer = spawn(process.execPath, [path.join(__dirname, "fixtures", "swap-racer.js"), dir, victim], { stdio: "ignore" })
+  for (let i = 0; i < 40; i++) spawnSync(helper, ["--arrive"], { encoding: "utf8", env: x.env })
+  racer.kill("SIGTERM")
+  assert.equal(fs.readFileSync(victim, "utf8"), "precious")
+  fs.rmSync(x.root, { recursive: true, force: true })
+})
+
+test("same-UID parent directory swaps cannot redirect a ledger publication", () => {
+  const x = setup(); const dir = dirOf(x)
+  fs.mkdirSync(dir, { recursive: true })
+  const victimDir = path.join(x.root, "victim-parent"); fs.mkdirSync(victimDir)
+  const racer = spawn(process.execPath, [path.join(__dirname, "fixtures", "parent-swap-racer.js"), dir, victimDir], { stdio: "ignore" })
+  for (let i = 0; i < 40; i++) spawnSync(helper, ["--leave"], { encoding: "utf8", env: x.env })
+  racer.kill("SIGTERM")
+  assert.equal(fs.existsSync(path.join(victimDir, "boundaries.jsonl")), false)
+  fs.rmSync(x.root, { recursive: true, force: true })
+})
+
+test("FIFO ledger is rejected without blocking the polling read", () => {
+  const x = setup(); fs.mkdirSync(dirOf(x), { recursive: true })
+  const fifo = path.join(dirOf(x), "boundaries.jsonl")
+  const made = spawnSync("mkfifo", [fifo], { encoding: "utf8" })
+  assert.equal(made.status, 0, made.stderr)
+  const result = spawnSync(helper, ["--scan"], { encoding: "utf8", env: x.env, timeout: 1000 })
+  assert.equal(result.status, 0, result.stderr)
+  assert.deepEqual(JSON.parse(result.stdout), { events: [] })
   fs.rmSync(x.root, { recursive: true, force: true })
 })

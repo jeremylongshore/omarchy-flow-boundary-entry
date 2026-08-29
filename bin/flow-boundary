@@ -1,47 +1,99 @@
-#!/usr/bin/env bash
+#!/usr/bin/perl
 # Local-only transition ledger. It records intent, never calendar contents.
-set -euo pipefail
+#
+# The ledger lives below a directory descriptor held by this process. All later
+# operations are relative to that pinned directory, so swapping its pathname or
+# an ancestor after startup cannot redirect a read, write, rename, or unlink.
+use strict;
+use warnings;
+use Fcntl qw(:DEFAULT);
+use File::Path qw(make_path);
+use File::Spec;
+use IO::Handle;
+use JSON::PP qw(encode_json decode_json);
 
-# The ledger is PRIVATE: umask before creation means the directory is born 0700
-# and the file 0600, with no permissive window. (Marketplace review, #2903.)
-umask 077
-root="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy-flow-boundary"
-log="$root/boundaries.jsonl"
-mkdir -p "$root"
+umask 0077;
+my $base = $ENV{XDG_STATE_HOME} || File::Spec->catdir($ENV{HOME}, ".local", "state");
+my $root = File::Spec->catdir($base, "omarchy-flow-boundary");
+make_path($root, { mode => 0700 }) unless -d $root;
 
-# The ledger path is user-writable mutable state, so every read treats it as
-# untrusted input: a REGULAR file only (a symlink could point anywhere; a FIFO
-# would hang the jq the QML poller buffers), and a byte ceiling checked before
-# jq ever opens it. The writer keeps 32 lines, so the ceiling is generous; an
-# oversized or replaced file reads as an empty ledger rather than being parsed.
-log_max_bytes=16384
-log_readable() {
-  [[ -f "$log" && ! -L "$log" ]] || return 1
-  local size; size="$(stat -c %s "$log" 2>/dev/null || printf 0)"
-  [[ "$size" =~ ^[0-9]+$ ]] && (( size > 0 && size <= log_max_bytes ))
+my $dir;
+sysopen($dir, $root, O_RDONLY | O_DIRECTORY | O_NOFOLLOW) or die "unsafe state directory\n";
+my @ds = stat($dir);
+die "unsafe state directory\n" unless @ds && -d _ && $ds[4] == $<;
+chmod 0700, $dir;
+chdir $dir or die "cannot pin state directory\n";
+
+my $log = "boundaries.jsonl";
+my $max_bytes = 16 * 1024;
+my $max_events = 32;
+
+sub read_events {
+  return [] unless -e $log;
+  my $fh;
+  return [] unless sysopen($fh, $log, O_RDONLY | O_NONBLOCK | O_NOFOLLOW);
+  my @st = stat($fh);
+  unless (@st && -f _ && $st[4] == $< && $st[7] > 0 && $st[7] <= $max_bytes) {
+    close $fh;
+    return [];
+  }
+  my $raw = "";
+  while (length($raw) <= $max_bytes) {
+    my $n = sysread($fh, my $chunk, 4096);
+    last unless defined($n) && $n > 0;
+    $raw .= $chunk;
+  }
+  close $fh;
+  return [] if length($raw) > $max_bytes;
+  my @events;
+  for my $line (split /\n/, $raw) {
+    next unless length $line;
+    my $row = eval { decode_json($line) };
+    next unless ref($row) eq "HASH" && ($row->{kind} || "") =~ /\A(?:arrive|leave)\z/ && ($row->{at} || "") =~ /\A\d+\z/;
+    push @events, { kind => $row->{kind}, at => 0 + $row->{at} };
+  }
+  return \@events;
 }
 
-record() {
-  local kind="$1" now tmp
-  [[ "$kind" == arrive || "$kind" == leave ]] || exit 2
-  now="$(date +%s)"
-  # Rewrite through a mktemp file created inside the private directory and
-  # rename it into place. The previous `tail > "$log.tmp"` used a PREDICTABLE
-  # path that follows a pre-existing symlink, allowing an unintended user-file
-  # overwrite; mktemp+rename closes both holes and is atomic besides.
-  tmp="$(mktemp "$root/.boundaries.XXXXXX")"
-  if log_readable; then timeout 2 tail -n 31 "$log" > "$tmp" 2>/dev/null || : > "$tmp"; fi
-  jq -cn --arg kind "$kind" --argjson at "$now" '{kind:$kind,at:$at}' >> "$tmp"
-  mv -f "$tmp" "$log"
-  jq -cn --arg kind "$kind" --argjson at "$now" '{kind:$kind,at:$at}'
+sub open_temp {
+  for (1 .. 32) {
+    my $name = sprintf ".boundaries.%d.%08x", $$, int(rand(0xffffffff));
+    my $fh;
+    return ($name, $fh) if sysopen($fh, $name, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0600);
+  }
+  die "cannot create private ledger temp\n";
 }
-scan() {
-  # Defense in depth: even a valid-size ledger goes through jq under a timeout,
-  # and stdout is capped so the QML StdioCollector can never buffer unbounded.
-  if log_readable; then
-    timeout 2 jq -sc '{events:.}' "$log" 2>/dev/null | head -c 65536 || jq -cn '{events:[]}'
-  else
-    jq -cn '{events:[]}'
-  fi
+
+sub publish_events {
+  my ($events) = @_;
+  my ($temp, $fh) = open_temp();
+  my $payload = join "", map { encode_json($_) . "\n" } @$events;
+  my $offset = 0;
+  while ($offset < length $payload) {
+    my $n = syswrite($fh, substr($payload, $offset));
+    die "ledger write failed\n" unless defined($n) && $n > 0;
+    $offset += $n;
+  }
+  $fh->sync or die "ledger fsync failed\n";
+  close $fh or die "ledger close failed\n";
+  rename $temp, $log or die "ledger replace failed\n";
+  chmod 0600, $log;
 }
-case "${1:---scan}" in --scan) scan ;; --arrive) record arrive ;; --leave) record leave ;; *) exit 2 ;; esac
+
+sub record {
+  my ($kind) = @_;
+  die "invalid boundary\n" unless $kind =~ /\A(?:arrive|leave)\z/;
+  my $events = read_events();
+  push @$events, { kind => $kind, at => time() };
+  splice @$events, 0, @$events - $max_events if @$events > $max_events;
+  publish_events($events);
+  print encode_json($events->[-1]), "\n";
+}
+
+sub scan { print encode_json({ events => read_events() }), "\n" }
+
+my $op = $ARGV[0] || "--scan";
+if ($op eq "--scan") { scan() }
+elsif ($op eq "--arrive") { record("arrive") }
+elsif ($op eq "--leave") { record("leave") }
+else { exit 2 }
