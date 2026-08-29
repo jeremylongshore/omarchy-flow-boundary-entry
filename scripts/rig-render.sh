@@ -188,6 +188,8 @@ grep -a -iE "(WARN|ERROR).*(qml|scene)|(qml|scene).*(WARN|ERROR)|cannot assign|i
 # a purpose-sized 16:9 output and a full-frame capture: no crop, resize, or
 # fabricated post-process, and no intermittent partial-frame screenshots.
 grim "\$SHOT" 2>/dev/null
+echo "===RUN=== \$RUN_ID"
+echo "===LOGSHA=== \$(sha256sum "\$QS_LOG" | awk '{print \$1}')"
 echo "===PACKAGE=== \$(sha256sum /tmp/rigrender-\$RUN_ID.tgz | awk '{print \$1}')"
 echo "===SHOT=== \$(ls -l "\$SHOT" 2>/dev/null | awk '{print \$5}') bytes"
 REMOTE_EOF
@@ -200,6 +202,8 @@ RESULT="$(ssh "$HOST" "docker cp /tmp/rigrender-$RUN_ID.tgz $CONTAINER:/tmp/ >/d
 WARNINGS="$(printf '%s' "$RESULT" | sed -n '/===QML WARNINGS===/,/===SHOT===/p' | grep -vE '===' || true)"
 SIZE="$(printf '%s' "$RESULT" | grep -oE '===SHOT=== [0-9]+' | grep -oE '[0-9]+' || true)"
 REMOTE_SHA="$(printf '%s' "$RESULT" | grep -oE '===PACKAGE=== [a-f0-9]{64}' | awk '{print $2}' || true)"
+RAW_LOG_SHA="$(printf '%s' "$RESULT" | grep -oE '===LOGSHA=== [a-f0-9]{64}' | awk '{print $2}' || true)"
+REMOTE_RUN_ID="$(printf '%s' "$RESULT" | grep -oE '===RUN=== [a-z0-9-]+' | awk '{print $2}' || true)"
 
 if [[ -n "$WARNINGS" ]]; then
   echo "rig-render: the shell reported problems loading this plugin:"
@@ -213,6 +217,10 @@ if [[ -z "$SIZE" || "$SIZE" -lt 4000 ]]; then
 fi
 if [[ "$REMOTE_SHA" != "$ARCHIVE_SHA" ]]; then
   echo "rig-render: remote package hash does not match the source package" >&2
+  exit 1
+fi
+if [[ ! "$RAW_LOG_SHA" =~ ^[a-f0-9]{64}$ || "$REMOTE_RUN_ID" != "$RUN_ID" ]]; then
+  echo "rig-render: raw shell log provenance is missing or belongs to another run" >&2
   exit 1
 fi
 
@@ -234,18 +242,22 @@ if [[ -z "$COVERAGE" ]] || ! awk -v coverage="$COVERAGE" 'BEGIN { exit !(coverag
 fi
 
 PREVIEW_SHA="$(sha256sum "$OUT" | cut -d' ' -f1)"
+if [[ -n "$WARNINGS" ]]; then
+  echo "rig-render: refusing to write a clean receipt for a warning-bearing shell log" >&2
+  exit 1
+fi
 jq -n --arg fp "$FP" --arg commit "$SOURCE_COMMIT" --argjson dirty "$SOURCE_DIRTY" \
   --arg archive "$ARCHIVE_SHA" --arg remote "$REMOTE_SHA" --arg rig "$HOST/$CONTAINER" \
+  --arg run "$REMOTE_RUN_ID" --arg logSha "$RAW_LOG_SHA" \
   --arg sha "$PREVIEW_SHA" --arg dimensions "${DIMS/x/ x }" --arg coverage "$COVERAGE" \
   --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   '{fingerprint:$fp,sourceCommit:$commit,sourceDirty:$dirty,
-    sourcePackageSha256:$archive,remotePackageSha256:$remote,rig:$rig,
+    sourcePackageSha256:$archive,remotePackageSha256:$remote,rig:$rig,runId:$run,rawShellLogSha256:$logSha,
     packageBoundary:"runtime tree; generated proof receipts, reports, tests, developer scripts, and marketplace preview excluded",
     evidenceBoundary:"isolated real Omarchy shell and QML under a dedicated headless compositor; live plugin IPC writes through first-party inline widget settings; persisted history verified after a full shell restart; direct full-frame grim capture with no crop or image post-processing",
     previewSha256:$sha,dimensions:$dimensions,nonblackCoverage:($coverage|tonumber),capturedAt:$at}' \
   > "$TARGET/.render-proof.json"
 
 echo "rig-render: wrote $OUT (${SIZE} bytes on the rig, ${DIMS}, coverage ${COVERAGE})"
-[[ -n "$WARNINGS" ]] && exit 1
 echo "rig-render: loaded clean, no QML warnings"
 exit 0
