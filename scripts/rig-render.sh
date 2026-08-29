@@ -62,7 +62,9 @@ fi
 TGZ="$(mktemp -t rigrender-XXXXXX.tgz)"
 trap 'rm -f "$TGZ"' EXIT
 # tests/ and scripts/ are not shipped to a user, so they are not shipped here.
-tar czf "$TGZ" -C "$TARGET" --exclude=.git --exclude=tests --exclude=scripts --exclude=node_modules . || {
+tar czf "$TGZ" -C "$TARGET" --exclude=.git --exclude=tests --exclude=scripts \
+  --exclude=node_modules --exclude=reports --exclude=coverage \
+  --exclude=.rig-proof.json --exclude=.render-proof.json . || {
   echo "rig-render: could not package the tree" >&2; exit 2; }
 ARCHIVE_SHA="$(sha256sum "$TGZ" | cut -d' ' -f1)"
 

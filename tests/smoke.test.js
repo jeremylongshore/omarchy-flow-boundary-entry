@@ -44,5 +44,6 @@ test("marketplace preview is a focused 16:9 live-render composition", () => {
   assert.match(rig, /sourcePackageSha256/)
   assert.match(rig, /remotePackageSha256/)
   assert.match(rig, /previewSha256/)
+  assert.match(rig, /--exclude=\.rig-proof\.json --exclude=\.render-proof\.json/)
   assert.doesNotMatch(rig, /grim -g/)
 })

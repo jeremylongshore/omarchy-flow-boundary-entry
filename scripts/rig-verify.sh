@@ -45,7 +45,9 @@ fi
 
 TGZ="$(mktemp -t rigcheck-XXXXXX.tgz)"
 trap 'rm -f "$TGZ"' EXIT
-tar czf "$TGZ" -C "$TARGET" --exclude=.git --exclude=tests --exclude=node_modules . || {
+tar czf "$TGZ" -C "$TARGET" --exclude=.git --exclude=tests --exclude=node_modules \
+  --exclude=reports --exclude=coverage --exclude=.rig-proof.json \
+  --exclude=.render-proof.json . || {
   echo "rig-verify: could not package the tree" >&2; exit 2; }
 ARCHIVE_SHA="$(sha256sum "$TGZ" | cut -d' ' -f1)"
 
