@@ -4,13 +4,16 @@
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/U5S225PTME)
 
-Flow Boundary is a private local ledger for deliberate arrive and leave
-boundaries. It makes a small record when you start or end a focus block, helping
-you close one context before opening another.
+Flow Boundary marks the moment you enter or leave a focus block without handing
+your schedule, projects, or notifications to another service. Its Omarchy bar
+widget gives you explicit Arrive and Leave actions and a color-coded timeline of
+recent context changes, helping you close one task cleanly before opening the
+next and reconstruct where the day changed direction.
 
 It does not inspect calendar events, project contents, or notification history.
-Records live only in your local state directory, are sanitized before display,
-and remain bounded.
+The bounded history is stored through Omarchy's own inline widget-settings API,
+so Flow Boundary opens no state pathname and needs no helper interpreter. There
+is no account, cloud sync, telemetry, or background network access.
 
 ## Install
 

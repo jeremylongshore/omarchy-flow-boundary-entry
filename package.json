@@ -1,12 +1,12 @@
 {
   "name": "omarchy-flow-boundary-entry",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Local Flow Boundary model test harness",
   "scripts": {
-    "test": "perl -c bin/flow-boundary && c8 --all --include=Model.js --check-coverage --lines 95 --functions 95 --branches 90 node --test tests/*.test.js",
+    "test": "c8 --all --include=Model.js --check-coverage --lines 95 --functions 95 --branches 90 node --test tests/*.test.js",
     "test:smoke": "node --test tests/smoke.test.js",
-    "test:race": "for run in 1 2 3; do node --test tests/helper.test.js || exit; done",
+    "test:race": "for run in 1 2 3; do node --test tests/model.test.js || exit; done",
     "test:e2e": "bash e2e/buzz.sh",
     "test:mutation": "stryker run",
     "audit": "audit-harness verify && audit-harness audit . --deep && audit-harness scan ."

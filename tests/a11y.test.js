@@ -16,3 +16,10 @@ test("every dynamic event label is rendered as bounded plain text", () => {
   assert.match(panel, /text:Model\.kindLabel\(modelData\.kind\)/)
   assert.match(panel, /textFormat:Text\.PlainText; width:[^;]+; elide:Text\.ElideRight/)
 })
+
+test("history uses Omarchy-owned inline settings without an interpreter process", () => {
+  assert.match(panel, /import Quickshell\.Io/)
+  assert.doesNotMatch(panel, /\bProcess\s*\{|helperPath/)
+  assert.match(panel, /bar\.shell\.updateEntryInline/)
+  assert.match(panel, /Model\.appendEvent\(eventsJson,kind,Date\.now\(\)\)/)
+})

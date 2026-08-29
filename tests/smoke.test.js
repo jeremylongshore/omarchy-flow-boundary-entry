@@ -2,9 +2,7 @@ const test = require("node:test")
 // RTM: REQ-FB-005, REQ-FB-007
 const assert = require("node:assert/strict")
 const fs = require("node:fs")
-const os = require("node:os")
 const path = require("node:path")
-const { spawnSync } = require("node:child_process")
 const Model = require("../Model.js")
 
 const root = path.join(__dirname, "..")
@@ -19,17 +17,32 @@ test("QML calls only Model.js functions exported by the stock QML contract", () 
   assert.match(qml, /anchorItem:root\.anchorItem/)
 })
 
-test("stock Perl helper starts against an empty private state root", () => {
-  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "flow-boundary-smoke-"))
-  try {
-    const result = spawnSync(path.join(root, "bin", "flow-boundary"), ["--scan"], {
-      encoding: "utf8",
-      env: { ...process.env, HOME: temp, XDG_STATE_HOME: path.join(temp, "state") },
-      timeout: 2000
-    })
-    assert.equal(result.status, 0, result.stderr)
-    assert.deepEqual(JSON.parse(result.stdout), { events: [] })
-  } finally {
-    fs.rmSync(temp, { recursive: true, force: true })
-  }
+test("marketplace copy uses the full allowance to explain concrete value and privacy", () => {
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, "manifest.json"), "utf8"))
+  assert.equal(manifest.description.length, 500)
+  assert.match(manifest.description, /Arrive and Leave actions/)
+  assert.match(manifest.description, /color-coded timeline/)
+  assert.match(manifest.description, /no account, cloud sync, calendar access, telemetry, or network requests/)
+})
+
+test("marketplace preview is a focused 16:9 live-render composition", () => {
+  const preview = fs.readFileSync(path.join(root, "preview.png"))
+  assert.equal(preview.subarray(1, 4).toString("ascii"), "PNG")
+  assert.equal(preview.readUInt32BE(16), 1280)
+  assert.equal(preview.readUInt32BE(20), 720)
+  const rig = fs.readFileSync(path.join(root, "scripts", "rig-render.sh"), "utf8")
+  assert.match(rig, /OMARCHY_RIG_RESOLUTION:-1280x720/)
+  assert.match(rig, /OMARCHY_RIG_SCALE:-2/)
+  assert.match(rig, /rigrender-runtime-\\\$RUN_ID/)
+  assert.match(rig, /OMARCHY_PATH=\/root\/omarchy/)
+  assert.doesNotMatch(rig, /pkill/)
+  assert.match(rig, /grim "\\\$SHOT"/)
+  assert.match(rig, /coverage >= 0\.35/)
+  assert.match(rig, /expected 1280x720/)
+  assert.match(rig, /first-party settings write did not persist the boundary/)
+  assert.match(rig, /restarted Quickshell exited before IPC/)
+  assert.match(rig, /sourcePackageSha256/)
+  assert.match(rig, /remotePackageSha256/)
+  assert.match(rig, /previewSha256/)
+  assert.doesNotMatch(rig, /grim -g/)
 })

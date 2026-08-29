@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "id": "io.github.jeremylongshore.flow-boundary",
   "name": "Flow Boundary",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "Jeremy Longshore",
   "license": "MIT",
-  "description": "A local ritual for intentional context boundaries.",
+  "description": "Mark when you enter or leave a focus block without sending schedules, projects, or notifications to the cloud. Flow Boundary adds Arrive and Leave actions to the Omarchy bar, keeps its bounded color-coded timeline in Omarchy's local widget settings across shell restarts, with no helper process. Close one task before opening the next, reconstruct where your day changed direction, and build a deliberate transition ritual with no account, cloud sync, calendar access, telemetry, or network requests.",
   "kinds": [
     "bar-widget"
   ],
@@ -14,7 +14,7 @@
   },
   "barWidget": {
     "displayName": "Flow Boundary",
-    "description": "Records bounded local arrive and leave boundaries with no calendar access.",
+    "description": "Persists bounded arrive and leave boundaries in Omarchy's local widget settings with no calendar access.",
     "category": "Info",
     "aliases": [
       "flow-boundary"

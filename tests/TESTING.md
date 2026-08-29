@@ -3,8 +3,8 @@
 
 ## Classification (policy)
 
-Repo type: frontend + cli (Omarchy QML plugin with a stock-Perl state helper)
-Primary language(s): QML, JavaScript ES5, Perl, Bash
+Repo type: frontend (Omarchy QML bar widget with first-party settings persistence)
+Primary language(s): QML, JavaScript ES5, Bash
 Applicable layers: L1, L2, L3, L4-integration, L5-security, L5-a11y, L6-smoke, L6-e2e, L6-visual, L7-UAT
 Waived layers: L4-contract (no network or API), L4-migration (no schema migration), L5-perf (bounded local state), L5-chaos (single-user desktop plugin)
 Compliance overlay: none
@@ -27,14 +27,14 @@ journeys.step_coverage_min: 100
 
 L0: @intentsolutions/audit-harness 1.3.1
 L1: pre-push gate lane + GitHub Actions test/gates workflows
-L2: Perl syntax, ShellCheck, actionlint, vendored Omarchy gates, gitleaks, npm audit
+L2: ShellCheck, actionlint, vendored Omarchy gates, gitleaks, npm audit
 L3: node:test + c8 coverage + Stryker mutation + CRAP + three-run race stability
-L4-integration: real helper subprocess and adversarial filesystem fixtures
-L5-security: same-UID final/temp/parent racers, symlink/FIFO/oversize/path-confinement regressions
+L4-integration: QML-to-Model contract plus a real first-party settings write on Buzz
+L5-security: bounded settings input, no plugin-owned mutable state path, no helper interpreter
 L5-a11y: QML accessibility names/roles and bounded plain-text assertions
-L6-smoke: stock Perl startup and QML-to-Model contract tests
-L6-e2e: Buzz Omarchy validator, qmllint, live shell load, IPC open, and screenshot
-L6-visual: curated 1920x1200 live render inspected before submission
+L6-smoke: stock QML-to-Model contract tests
+L6-e2e: Buzz validator, qmllint, live settings write, full shell restart, IPC open, and screenshot
+L6-visual: curated 1280x720 live render inspected before submission
 L7-UAT: primary boundary journey mapped in tests/JOURNEYS.md
 
 ## Frameworks (observational)

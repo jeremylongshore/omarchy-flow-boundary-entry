@@ -3,9 +3,9 @@
 
 | Req ID | MoSCoW | Source | Description | Layers | Test files | Status |
 |---|---|---|---|---|---|---|
-| REQ-FB-001 | MUST | README.md | Record arrive and leave boundaries in a private local ledger | L3, L4 | tests/helper.test.js | Covered |
+| REQ-FB-001 | MUST | README.md | Record arrive and leave boundaries in bounded Omarchy-owned widget settings | L3, L4 | tests/model.test.js, tests/a11y.test.js | Covered |
 | REQ-FB-002 | MUST | README.md | Make no network calls and inspect no calendar, project, or notification content | L2, L5 | scripts/gates, tests/smoke.test.js | Covered |
-| REQ-FB-003 | MUST | Marketplace #2903 | Bound state and prevent symlink, FIFO, replacement, and parent-path redirection | L3, L5 | tests/helper.test.js, tests/fixtures | Covered |
+| REQ-FB-003 | MUST | Marketplace #2903 | Open no mutable state pathname and delegate persistence to the first-party shell API | L3, L5 | tests/model.test.js, tests/a11y.test.js, e2e/buzz.sh | Covered |
 | REQ-FB-004 | MUST | Panel.qml | Parse only bounded valid events and render untrusted fields as plain text | L3, L5 | tests/model.test.js, tests/a11y.test.js | Covered |
 | REQ-FB-005 | MUST | manifest.json | Run on stock Omarchy without Node or Python at runtime | L2, L6 | tests/smoke.test.js, scripts/rig-verify.sh | Covered |
 | REQ-FB-006 | MUST | Panel.qml | Expose named button roles for both boundary actions | L5, L6 | tests/a11y.test.js | Covered |

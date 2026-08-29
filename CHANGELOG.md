@@ -19,7 +19,16 @@ and gate c28 refuses them.
 
 Nothing yet.
 
-## [1.0.0] - unreleased
+## [0.2.0] - 2026-08-29
+
+### Changed
+
+- Replaced the Perl state helper with Omarchy-owned inline widget settings.
+- Reframed the live marketplace preview around a populated, readable panel.
+- Expanded the marketplace description to the full 500-character allowance.
+- Isolated each Buzz render in its own compositor, home, and runtime namespace.
+
+## [0.1.0] - 2026-08-27
 
 ### Added
 
