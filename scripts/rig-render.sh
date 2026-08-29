@@ -52,6 +52,7 @@ REMOTE="$(mktemp -t rigrender-XXXXXX.sh)"
 trap 'rm -f "$TGZ" "$REMOTE"' EXIT
 cat > "$REMOTE" <<REMOTE_EOF
 #!/bin/sh
+set -eu
 MOD="$MOD"; NAME="$NAME"; RES="$RES"
 export XDG_RUNTIME_DIR=/tmp/xdgrt
 mkdir -p \$XDG_RUNTIME_DIR; chmod 700 \$XDG_RUNTIME_DIR
@@ -80,6 +81,24 @@ done
 rm -rf /root/.config/omarchy/plugins/\$NAME
 mkdir -p /root/.config/omarchy/plugins/\$NAME
 tar xzf /tmp/rigrender.tgz -C /root/.config/omarchy/plugins/\$NAME
+
+# Seed a bounded local ledger so the marketplace image demonstrates the real
+# timeline instead of an empty first-run panel. The running plugin still reads
+# it through its shipped descriptor-bound helper.
+FLOW_STATE=/tmp/flow-boundary-state
+if [ -d "\$FLOW_STATE" ]; then find "\$FLOW_STATE" -depth -delete; fi
+mkdir -p "\$FLOW_STATE/omarchy-flow-boundary"
+chmod 700 "\$FLOW_STATE" "\$FLOW_STATE/omarchy-flow-boundary"
+now=\$(date +%s)
+printf '%s\n' \
+  "{\"kind\":\"arrive\",\"at\":\$((now-7200))}" \
+  "{\"kind\":\"leave\",\"at\":\$((now-2700))}" \
+  "{\"kind\":\"arrive\",\"at\":\$((now-720))}" \
+  "{\"kind\":\"leave\",\"at\":\$((now-120))}" \
+  "{\"kind\":\"arrive\",\"at\":\$now}" \
+  > "\$FLOW_STATE/omarchy-flow-boundary/boundaries.jsonl"
+chmod 600 "\$FLOW_STATE/omarchy-flow-boundary/boundaries.jsonl"
+export XDG_STATE_HOME="\$FLOW_STATE"
 
 mkdir -p /root/.config/omarchy
 cat > /root/.config/omarchy/shell.json <<JSON

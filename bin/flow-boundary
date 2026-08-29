@@ -6,45 +6,69 @@
 # an ancestor after startup cannot redirect a read, write, rename, or unlink.
 use strict;
 use warnings;
-use Fcntl qw(:DEFAULT);
-use File::Path qw(make_path);
+use Fcntl qw(:DEFAULT :mode);
 use File::Spec;
 use IO::Handle;
 use JSON::PP qw(encode_json decode_json);
 
 umask 0077;
-my $base = $ENV{XDG_STATE_HOME} || File::Spec->catdir($ENV{HOME}, ".local", "state");
-my $root = File::Spec->catdir($base, "omarchy-flow-boundary");
-make_path($root, { mode => 0700 }) unless -d $root;
+my $LOG = "boundaries.jsonl";
+my $MAX_BYTES = 16 * 1024;
+my $MAX_EVENTS = 32;
 
-my $dir;
-sysopen($dir, $root, O_RDONLY | O_DIRECTORY | O_NOFOLLOW) or die "unsafe state directory\n";
-my @ds = stat($dir);
-die "unsafe state directory\n" unless @ds && -d _ && $ds[4] == $<;
-chmod 0700, $dir;
-chdir $dir or die "cannot pin state directory\n";
+sub open_state_chain {
+  my $home = $ENV{HOME} // "";
+  my $base = length($ENV{XDG_STATE_HOME} // "")
+    ? $ENV{XDG_STATE_HOME}
+    : File::Spec->catdir($home, ".local", "state");
+  die "state root must be absolute\n" unless File::Spec->file_name_is_absolute($base);
 
-my $log = "boundaries.jsonl";
-my $max_bytes = 16 * 1024;
-my $max_events = 32;
+  my $full = File::Spec->catdir($base, "omarchy-flow-boundary");
+  my @parts = grep { length($_) } File::Spec->splitdir($full);
+  die "unsafe state path\n" if grep { $_ eq "." || $_ eq ".." } @parts;
+
+  my $current;
+  sysopen($current, "/", O_RDONLY | O_DIRECTORY | O_NOFOLLOW)
+    or die "cannot pin filesystem root\n";
+  my @chain = ($current);
+  for my $part (@parts) {
+    chdir($current) or die "cannot traverse state path\n";
+    my $next;
+    unless (sysopen($next, $part, O_RDONLY | O_DIRECTORY | O_NOFOLLOW)) {
+      mkdir($part, 0700);
+      sysopen($next, $part, O_RDONLY | O_DIRECTORY | O_NOFOLLOW)
+        or die "unsafe state path component\n";
+    }
+    my @st = stat($next);
+    die "unsafe state path component\n" unless @st && S_ISDIR($st[2]);
+    push @chain, $next;
+    $current = $next;
+  }
+
+  my @root_stat = stat($current);
+  die "unsafe state directory owner\n"
+    unless @root_stat && S_ISDIR($root_stat[2]) && $root_stat[4] == $<;
+  chmod(0700, $current) or die "cannot privatize state directory\n";
+  chdir($current) or die "cannot retain state directory\n";
+  return (\@chain, $current);
+}
 
 sub read_events {
-  return [] unless -e $log;
   my $fh;
-  return [] unless sysopen($fh, $log, O_RDONLY | O_NONBLOCK | O_NOFOLLOW);
+  return [] unless sysopen($fh, $LOG, O_RDONLY | O_NONBLOCK | O_NOFOLLOW);
   my @st = stat($fh);
-  unless (@st && -f _ && $st[4] == $< && $st[7] > 0 && $st[7] <= $max_bytes) {
+  unless (@st && S_ISREG($st[2]) && $st[4] == $< && $st[7] > 0 && $st[7] <= $MAX_BYTES) {
     close $fh;
     return [];
   }
   my $raw = "";
-  while (length($raw) <= $max_bytes) {
+  while (length($raw) <= $MAX_BYTES) {
     my $n = sysread($fh, my $chunk, 4096);
     last unless defined($n) && $n > 0;
     $raw .= $chunk;
   }
   close $fh;
-  return [] if length($raw) > $max_bytes;
+  return [] if length($raw) > $MAX_BYTES;
   my @events;
   for my $line (split /\n/, $raw) {
     next unless length $line;
@@ -56,18 +80,32 @@ sub read_events {
 }
 
 sub open_temp {
-  for (1 .. 32) {
-    my $name = sprintf ".boundaries.%d.%08x", $$, int(rand(0xffffffff));
+  for (1 .. 64) {
+    my $name = sprintf ".boundaries.%d.%08x%08x", $$,
+      int(rand(0xffffffff)), int(rand(0xffffffff));
     my $fh;
-    return ($name, $fh) if sysopen($fh, $name, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0600);
+    if (sysopen($fh, $name, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0600)) {
+      chmod(0600, $fh) or die "cannot privatize ledger temp\n";
+      return ($name, $fh);
+    }
   }
   die "cannot create private ledger temp\n";
 }
 
+sub same_object {
+  my ($left, $right) = @_;
+  return @$left && @$right
+    && $left->[0] == $right->[0]
+    && $left->[1] == $right->[1]
+    && S_ISREG($left->[2]) && S_ISREG($right->[2]);
+}
+
 sub publish_events {
-  my ($events) = @_;
+  my ($events, $dir_fh) = @_;
   my ($temp, $fh) = open_temp();
+  my @opened = stat($fh);
   my $payload = join "", map { encode_json($_) . "\n" } @$events;
+  die "ledger payload exceeded bound\n" if length($payload) > $MAX_BYTES;
   my $offset = 0;
   while ($offset < length $payload) {
     my $n = syswrite($fh, substr($payload, $offset));
@@ -75,25 +113,35 @@ sub publish_events {
     $offset += $n;
   }
   $fh->sync or die "ledger fsync failed\n";
+  my @named = lstat($temp);
+  unless (same_object(\@opened, \@named)) {
+    close($fh);
+    unlink($temp);
+    die "ledger temp identity changed\n";
+  }
+  rename $temp, $LOG or die "ledger replace failed\n";
+  my @published = lstat($LOG);
+  die "ledger publication identity changed\n"
+    unless same_object(\@opened, \@published);
+  $dir_fh->sync or die "ledger directory fsync failed\n";
   close $fh or die "ledger close failed\n";
-  rename $temp, $log or die "ledger replace failed\n";
-  chmod 0600, $log;
 }
 
 sub record {
-  my ($kind) = @_;
+  my ($kind, $dir_fh) = @_;
   die "invalid boundary\n" unless $kind =~ /\A(?:arrive|leave)\z/;
   my $events = read_events();
   push @$events, { kind => $kind, at => time() };
-  splice @$events, 0, @$events - $max_events if @$events > $max_events;
-  publish_events($events);
+  splice @$events, 0, @$events - $MAX_EVENTS if @$events > $MAX_EVENTS;
+  publish_events($events, $dir_fh);
   print encode_json($events->[-1]), "\n";
 }
 
 sub scan { print encode_json({ events => read_events() }), "\n" }
 
+my ($chain, $dir_fh) = open_state_chain();
 my $op = $ARGV[0] || "--scan";
 if ($op eq "--scan") { scan() }
-elsif ($op eq "--arrive") { record("arrive") }
-elsif ($op eq "--leave") { record("leave") }
+elsif ($op eq "--arrive") { record("arrive", $dir_fh) }
+elsif ($op eq "--leave") { record("leave", $dir_fh) }
 else { exit 2 }

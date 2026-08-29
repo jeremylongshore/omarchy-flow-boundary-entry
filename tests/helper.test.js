@@ -1,4 +1,5 @@
 const test = require("node:test")
+// RTM: REQ-FB-001, REQ-FB-003, REQ-FB-005
 const assert = require("node:assert/strict")
 const fs = require("node:fs")
 const os = require("node:os")
@@ -94,5 +95,25 @@ test("FIFO ledger is rejected without blocking the polling read", () => {
   const result = spawnSync(helper, ["--scan"], { encoding: "utf8", env: x.env, timeout: 1000 })
   assert.equal(result.status, 0, result.stderr)
   assert.deepEqual(JSON.parse(result.stdout), { events: [] })
+  fs.rmSync(x.root, { recursive: true, force: true })
+})
+
+test("a symlinked state-path component is refused before publication", () => {
+  const x = setup()
+  const victimDir = path.join(x.root, "victim-state"); fs.mkdirSync(victimDir)
+  fs.symlinkSync(victimDir, x.env.XDG_STATE_HOME, "dir")
+  const result = spawnSync(helper, ["--arrive"], { encoding: "utf8", env: x.env })
+  assert.notEqual(result.status, 0)
+  assert.equal(fs.existsSync(path.join(victimDir, "omarchy-flow-boundary", "boundaries.jsonl")), false)
+  fs.rmSync(x.root, { recursive: true, force: true })
+})
+
+test("a relative state root is refused instead of depending on process cwd", () => {
+  const x = setup()
+  const result = spawnSync(helper, ["--arrive"], {
+    encoding: "utf8", env: { ...x.env, XDG_STATE_HOME: "relative-state" }, cwd: x.root
+  })
+  assert.notEqual(result.status, 0)
+  assert.equal(fs.existsSync(path.join(x.root, "relative-state")), false)
   fs.rmSync(x.root, { recursive: true, force: true })
 })
