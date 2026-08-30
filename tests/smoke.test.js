@@ -20,9 +20,12 @@ test("QML calls only Model.js functions exported by the stock QML contract", () 
 test("marketplace copy uses the full allowance to explain concrete value and privacy", () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(root, "manifest.json"), "utf8"))
   assert.equal(manifest.description.length, 500)
+  assert.equal(manifest.barWidget.description.length, 500)
+  assert.equal(manifest.barWidget.description, manifest.description)
   assert.match(manifest.description, /Arrive and Leave actions/)
-  assert.match(manifest.description, /color-coded timeline/)
-  assert.match(manifest.description, /no account, cloud sync, calendar access, telemetry, or network requests/)
+  assert.match(manifest.description, /eight newest color-coded transitions/)
+  assert.match(manifest.description, /latest 32 timestamp-only records/)
+  assert.match(manifest.description, /no account, telemetry, or network use/)
 })
 
 test("marketplace preview is a focused 16:9 live-render composition", () => {
