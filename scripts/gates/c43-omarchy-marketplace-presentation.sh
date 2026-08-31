@@ -51,6 +51,61 @@ fi
 if [[ "$HAS_BAR_WIDGET" == "true" && "$BAR_DESC_LENGTH" != "500" ]]; then
   FINDINGS+=("barWidget description uses $BAR_DESC_LENGTH/500 characters")
 fi
+if [[ "$HAS_BAR_WIDGET" == "true" && "$DESCRIPTION" != "$BAR_DESCRIPTION" ]]; then
+  FINDINGS+=("manifest and barWidget descriptions tell different product stories")
+fi
+
+# Length alone is not copy quality. A submission description must identify the
+# product, explain what the user can see or do, and state a meaningful trust
+# boundary. These checks deliberately reject generic 500-character filler while
+# repo-specific contract tests pin the precise claims each plugin is allowed to
+# make.
+COPY_RESULT=$(DESCRIPTION="$DESCRIPTION" PLUGIN_NAME="$NAME" /usr/bin/python3 <<'PY'
+import os
+import re
+
+description = os.environ["DESCRIPTION"].strip()
+name = os.environ["PLUGIN_NAME"].strip()
+lower = description.casefold()
+findings = []
+
+if name and name.casefold() not in lower:
+    findings.append("description never names the plugin")
+
+sentences = [part.strip() for part in re.split(r"(?<=[.!?])\s+", description) if part.strip()]
+if len(sentences) < 4:
+    findings.append("description needs at least four readable sentences")
+if sentences and len(sentences[0]) < 50:
+    findings.append("opening sentence is too thin to establish the user outcome")
+
+surface_terms = ("bar", "panel", "pill", "widget")
+if not any(re.search(rf"\b{term}\b", lower) for term in surface_terms):
+    findings.append("description never explains the visible bar, panel, pill, or widget")
+
+interaction_terms = (
+    "open", "click", "select", "start", "copy", "install", "jump", "focus",
+    "mark", "refresh", "clear", "choose", "preview", "show", "shows", "see",
+    "sort", "scan", "reads", "switch", "count", "counts",
+)
+if not any(re.search(rf"\b{term}\w*\b", lower) for term in interaction_terms):
+    findings.append("description gives no concrete user interaction or visible behavior")
+
+boundary_terms = ("no ", "never ", "only ", "without ", "offline", "local", "private", "fixed ")
+if not any(term in lower for term in boundary_terms):
+    findings.append("description gives no privacy, network, data, or write boundary")
+
+banned = (
+    "cutting-edge", "game-changer", "game-changing", "revolutionary", "supercharge",
+    "seamless", "robust solution", "unlock your", "take your productivity to the next level",
+)
+present = [term for term in banned if term in lower]
+if present:
+    findings.append("description contains generic marketing filler: " + ", ".join(present))
+
+print("; ".join(findings))
+PY
+)
+[[ -n "$COPY_RESULT" ]] && FINDINGS+=("$COPY_RESULT")
 
 BANNER="$GATE_TREE_DIR/assets/banner.svg"
 if [[ ! -f "$BANNER" ]]; then
@@ -118,6 +173,25 @@ fi
 if [[ "$GATE_ACTION" == "omarchy-submit" ]]; then
   PREVIEW="$GATE_TREE_DIR/preview.png"
   PROOF="$GATE_TREE_DIR/.render-proof.json"
+
+  # A render receipt must certify the tree being submitted, not merely agree
+  # with its own preview hash. Keep this scope identical to rig-render.sh:
+  # manifest, QML, JavaScript, every executable shipped by the plugin, and all
+  # deterministic render controls under e2e/. C37 deliberately covers runtime
+  # only; presentation proof must also change when its fixture or framing does.
+  # scripts/ is the vendored gate lane and is intentionally excluded.
+  presentation_fingerprint() {
+    ( cd "$GATE_TREE_DIR" && \
+      /usr/bin/find . -type f \
+        -not -path './.git/*' -not -path './tests/*' \
+        -not -path './scripts/*' -not -path './node_modules/*' \
+        \( -path './e2e/*' -o -name '*.qml' -o -name '*.js' -o -name 'manifest.json' -o -perm -u+x \) \
+        -print0 2>/dev/null \
+      | LC_ALL=C /usr/bin/sort -z \
+      | /usr/bin/xargs -0 /usr/bin/cat 2>/dev/null \
+      | /usr/bin/sha256sum | /usr/bin/cut -d' ' -f1 )
+  }
+
   if [[ ! -f "$PREVIEW" ]]; then
     FINDINGS+=("preview.png is missing")
   fi
@@ -128,6 +202,8 @@ if [[ "$GATE_ACTION" == "omarchy-submit" ]]; then
   if [[ -f "$PREVIEW" && -f "$PROOF" ]]; then
     PREVIEW_SHA=$(/usr/bin/sha256sum "$PREVIEW" | /usr/bin/cut -d' ' -f1)
     RECORDED_SHA=$(/usr/bin/jq -r '.previewSha256 // ""' "$PROOF" 2>/dev/null)
+    RECORDED_FINGERPRINT=$(/usr/bin/jq -r '.fingerprint // ""' "$PROOF" 2>/dev/null)
+    CURRENT_FINGERPRINT=$(presentation_fingerprint)
     SOURCE_DIRTY=$(/usr/bin/jq -r 'if has("sourceDirty") then .sourceDirty else true end' "$PROOF" 2>/dev/null)
     SOURCE_PACKAGE=$(/usr/bin/jq -r '.sourcePackageSha256 // ""' "$PROOF" 2>/dev/null)
     REMOTE_PACKAGE=$(/usr/bin/jq -r '.remotePackageSha256 // ""' "$PROOF" 2>/dev/null)
@@ -152,6 +228,8 @@ PY
 )
 
     [[ "$PREVIEW_SHA" == "$RECORDED_SHA" ]] || FINDINGS+=("preview hash does not match the render receipt")
+    [[ -n "$RECORDED_FINGERPRINT" && "$RECORDED_FINGERPRINT" == "$CURRENT_FINGERPRINT" ]] || \
+      FINDINGS+=("render receipt does not match the current plugin tree")
     [[ "$SOURCE_DIRTY" == "false" ]] || FINDINGS+=("render receipt was produced from a dirty source tree")
     [[ -n "$SOURCE_PACKAGE" && "$SOURCE_PACKAGE" == "$REMOTE_PACKAGE" ]] || FINDINGS+=("source and remote render-package hashes do not match")
     [[ "$RUN_ID" =~ ^[a-z0-9][a-z0-9-]+$ ]] || FINDINGS+=("render receipt has no exact rig run ID")

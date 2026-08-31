@@ -46,7 +46,7 @@ fingerprint() {
     find . -type f \
       -not -path './.git/*' -not -path './tests/*' \
       -not -path './scripts/*' -not -path './node_modules/*' \
-      \( -name '*.qml' -o -name '*.js' -o -name 'manifest.json' -o -perm -u+x \) \
+      \( -path './e2e/*' -o -name '*.qml' -o -name '*.js' -o -name 'manifest.json' -o -perm -u+x \) \
       -print0 2>/dev/null \
     | LC_ALL=C sort -z | xargs -0 cat 2>/dev/null | sha256sum | cut -d' ' -f1 )
 }
@@ -55,7 +55,8 @@ SOURCE_COMMIT="$(git -C "$TARGET" rev-parse HEAD 2>/dev/null || printf unknown)"
 SOURCE_DIRTY=false
 if [[ "$SOURCE_COMMIT" == "unknown" ]] || \
    [[ -n "$(git -C "$TARGET" status --porcelain --untracked-files=all -- \
-     '*.qml' '*.js' manifest.json bin preview.png README.md assets/banner.svg scripts/rig-render.sh 2>/dev/null)" ]]; then
+     '*.qml' '*.js' manifest.json bin preview.png README.md assets/banner.svg \
+     e2e scripts/rig-render.sh 2>/dev/null)" ]]; then
   SOURCE_DIRTY=true
 fi
 
@@ -69,7 +70,7 @@ tar czf "$TGZ" -C "$TARGET" --exclude=.git --exclude=tests --exclude=scripts \
 ARCHIVE_SHA="$(sha256sum "$TGZ" | cut -d' ' -f1)"
 
 echo "rig-render: shipping $NAME to $HOST/$CONTAINER"
-scp -q "$TGZ" "$HOST:/tmp/rigrender-$RUN_ID.tgz" || { echo "rig-render: cannot reach $HOST" >&2; exit 2; }
+scp -q -o BatchMode=yes "$TGZ" "$HOST:/tmp/rigrender-$RUN_ID.tgz" || { echo "rig-render: cannot reach $HOST" >&2; exit 2; }
 
 # The remote body is written to a file rather than inlined, because nesting
 # quotes through ssh -> docker exec -> sh mangles them and fails silently.
@@ -194,8 +195,8 @@ echo "===PACKAGE=== \$(sha256sum /tmp/rigrender-\$RUN_ID.tgz | awk '{print \$1}'
 echo "===SHOT=== \$(ls -l "\$SHOT" 2>/dev/null | awk '{print \$5}') bytes"
 REMOTE_EOF
 
-scp -q "$REMOTE" "$HOST:/tmp/rigrender-$RUN_ID.sh"
-RESULT="$(ssh "$HOST" "docker cp /tmp/rigrender-$RUN_ID.tgz $CONTAINER:/tmp/ >/dev/null && \
+scp -q -o BatchMode=yes "$REMOTE" "$HOST:/tmp/rigrender-$RUN_ID.sh"
+RESULT="$(ssh -o BatchMode=yes "$HOST" "docker cp /tmp/rigrender-$RUN_ID.tgz $CONTAINER:/tmp/ >/dev/null && \
   docker cp /tmp/rigrender-$RUN_ID.sh $CONTAINER:/tmp/ >/dev/null && \
   docker exec $CONTAINER sh /tmp/rigrender-$RUN_ID.sh" 2>&1)"
 
@@ -224,8 +225,8 @@ if [[ ! "$RAW_LOG_SHA" =~ ^[a-f0-9]{64}$ || "$REMOTE_RUN_ID" != "$RUN_ID" ]]; th
   exit 1
 fi
 
-ssh "$HOST" "docker cp $CONTAINER:/tmp/rigrender-$RUN_ID.png /tmp/rigrender-out-$RUN_ID.png >/dev/null" || exit 1
-scp -q "$HOST:/tmp/rigrender-out-$RUN_ID.png" "$OUT" || exit 1
+ssh -o BatchMode=yes "$HOST" "docker cp $CONTAINER:/tmp/rigrender-$RUN_ID.png /tmp/rigrender-out-$RUN_ID.png >/dev/null" || exit 1
+scp -q -o BatchMode=yes "$HOST:/tmp/rigrender-out-$RUN_ID.png" "$OUT" || exit 1
 
 # Byte count alone accepted both blank and damaged frames in the old lane.
 # Decode the unmodified PNG and carry a visual denominator: exact marketplace
@@ -255,6 +256,7 @@ jq -n --arg fp "$FP" --arg commit "$SOURCE_COMMIT" --argjson dirty "$SOURCE_DIRT
     sourcePackageSha256:$archive,remotePackageSha256:$remote,rig:$rig,runId:$run,rawShellLogSha256:$logSha,
     packageBoundary:"runtime tree; generated proof receipts, reports, tests, developer scripts, and marketplace preview excluded",
     evidenceBoundary:"isolated real Omarchy shell and QML under a dedicated headless compositor; live plugin IPC writes through first-party inline widget settings; persisted history verified after a full shell restart; direct full-frame grim capture with no crop or image post-processing",
+    visualInspection:{status:"pending",previewSha256:$sha,checks:[]},
     previewSha256:$sha,dimensions:$dimensions,nonblackCoverage:($coverage|tonumber),capturedAt:$at}' \
   > "$TARGET/.render-proof.json"
 
