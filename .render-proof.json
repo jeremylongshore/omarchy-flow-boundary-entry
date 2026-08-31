@@ -1,16 +1,25 @@
 {
-  "fingerprint": "6fc5e276711ab0536653bf649b68ae6b7b4aff14920c0932d21301dab45bb8b9",
-  "sourceCommit": "c21f900a2c89bd63d88b169fb0fbdcd5408bc197",
+  "fingerprint": "709fa15b159ad17caea33c7cf5fd541e6a8aa262ddac92f77fa5cd1674f517a9",
+  "sourceCommit": "4548be9c00a77f9812903bee549c4b82ef3c8286",
   "sourceDirty": false,
-  "sourcePackageSha256": "501c75d9de18a5a81b7f217a7d1179f76e4ffe5c1e4d51294e8ffbc5be74aa70",
-  "remotePackageSha256": "501c75d9de18a5a81b7f217a7d1179f76e4ffe5c1e4d51294e8ffbc5be74aa70",
+  "sourcePackageSha256": "34c3749553e05cbf8919e3692c683ef644990f699d83f2039a807158b8b4dc85",
+  "remotePackageSha256": "34c3749553e05cbf8919e3692c683ef644990f699d83f2039a807158b8b4dc85",
   "rig": "intent-ops-buzz/omarchy-rig",
-  "runId": "flow-boundary-3659218",
-  "rawShellLogSha256": "6b8a9d7e7b3d7158b0f4035e2529127f7fa41cb2b0eb445e8cabdb858eeaa2aa",
+  "runId": "flow-boundary-3326633",
+  "rawShellLogSha256": "ab9083086ab26dd540690accdc7fc95d58982766bab740cce597656d151dab71",
   "packageBoundary": "runtime tree; generated proof receipts, reports, tests, developer scripts, and marketplace preview excluded",
   "evidenceBoundary": "isolated real Omarchy shell and QML under a dedicated headless compositor; live plugin IPC writes through first-party inline widget settings; persisted history verified after a full shell restart; direct full-frame grim capture with no crop or image post-processing",
-  "previewSha256": "ffe0e1d00b73268a43dcc0301b6d2cb8dde73fa6cc9d165436e8f7acbe37f126",
+  "visualInspection": {
+    "status": "approved",
+    "previewSha256": "fd448a8cc7c0f698ba44370f79f844b6fcc55726c1c2cdbe76e663274c8b9739",
+    "checks": [
+      "product value visible at marketplace scale",
+      "no primary content clipped",
+      "plugin-specific visual identity"
+    ]
+  },
+  "previewSha256": "fd448a8cc7c0f698ba44370f79f844b6fcc55726c1c2cdbe76e663274c8b9739",
   "dimensions": "1280 x 720",
   "nonblackCoverage": 0.769618,
-  "capturedAt": "2026-08-29T22:28:18Z"
+  "capturedAt": "2026-08-31T22:35:47Z"
 }
