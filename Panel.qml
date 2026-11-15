@@ -2,6 +2,9 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.Commons
+// Qt 6.12 adds its own Color type, so Omarchy's palette singleton must be
+// qualified (docs/omarchy-shell.md, Theme tokens).
+import qs.Commons as Commons
 import qs.Ui
 import "Model.js" as Model
 Panel {
@@ -20,8 +23,8 @@ Panel {
  KeyboardPanel { id:panel; anchorItem:root.anchorItem; owner:root.barIdentity; bar:root.bar; open:root.opened; centerOnBar:true; focusTarget:keys; contentWidth:panel.fittedContentWidth(Style.space(520)); contentHeight:panel.fittedContentHeight(content.implicitHeight)
   PanelKeyCatcher { id:keys; anchors.fill:parent; onCloseRequested:root.close(); onTabRequested:function(d){root.switchPanel(d)}
    Column { id:content; anchors.fill:parent; spacing:Style.space(10)
-    PanelHero { title:root.rows.length?"YOUR LAST BOUNDARY":"MAKE A CLEAN BREAK"; meta:"Private. Local. Enter with intent. Leave it clean."; foreground:root.bar?root.bar.foreground:Color.foreground; fontFamily:root.bar?root.bar.fontFamily:Style.font.family }
-    PanelSeparator { foreground:root.bar?root.bar.foreground:Color.foreground }
+    PanelHero { title:root.rows.length?"YOUR LAST BOUNDARY":"MAKE A CLEAN BREAK"; meta:"Private. Local. Enter with intent. Leave it clean."; foreground:root.bar?root.bar.foreground:Commons.Color.foreground; fontFamily:root.bar?root.bar.fontFamily:Style.font.family }
+    PanelSeparator { foreground:root.bar?root.bar.foreground:Commons.Color.foreground }
     Row { x:Style.space(16); width:parent.width-Style.space(32); spacing:Style.space(10)
      Rectangle {
       width:(parent.width-parent.spacing)/2; height:Style.space(54); radius:Style.space(5)
@@ -42,7 +45,7 @@ Panel {
       Rectangle { anchors.fill:parent; anchors.leftMargin:Style.space(16); anchors.rightMargin:Style.space(16); radius:Style.space(4); color:Qt.hsla(parent.eventHue,0.42,0.50,0.07) }
       Rectangle { anchors.left:parent.left; anchors.leftMargin:Style.space(16); anchors.verticalCenter:parent.verticalCenter; width:Style.space(3); height:parent.height-Style.space(8); radius:width/2; color:Qt.hsla(parent.eventHue,0.56,0.66,1) }
       Text { anchors.left:parent.left; anchors.leftMargin:Style.space(28); anchors.verticalCenter:parent.verticalCenter; text:Model.kindLabel(modelData.kind); textFormat:Text.PlainText; width:parent.width-Style.space(130); elide:Text.ElideRight; color:Qt.hsla(parent.eventHue,0.50,0.72,1); font.family:root.bar?root.bar.fontFamily:Style.font.family; font.pixelSize:Style.font.caption; font.bold:true }
-      Text { anchors.right:parent.right; anchors.rightMargin:Style.space(26); anchors.verticalCenter:parent.verticalCenter; text:modelData.age; textFormat:Text.PlainText; width:Style.space(64); horizontalAlignment:Text.AlignRight; elide:Text.ElideRight; color:root.bar?Qt.darker(root.bar.foreground,1.2):Color.muted; font.family:root.bar?root.bar.fontFamily:Style.font.family; font.pixelSize:Style.font.caption }
+      Text { anchors.right:parent.right; anchors.rightMargin:Style.space(26); anchors.verticalCenter:parent.verticalCenter; text:modelData.age; textFormat:Text.PlainText; width:Style.space(64); horizontalAlignment:Text.AlignRight; elide:Text.ElideRight; color:root.bar?Qt.darker(root.bar.foreground,1.2):Commons.Color.muted; font.family:root.bar?root.bar.fontFamily:Style.font.family; font.pixelSize:Style.font.caption }
     } }
    }
   }
