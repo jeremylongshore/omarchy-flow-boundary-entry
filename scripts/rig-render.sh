@@ -124,6 +124,16 @@ chmod 700 "\$RUNTIME" "\$RIG_ROOT" "\$RIG_ROOT/.config" "\$RIG_ROOT/.config/omar
   "\$RIG_ROOT/.config/omarchy/plugins" "\$RIG_ROOT/.config/omarchy/plugins/\$NAME" \
   "\$FLOW_STATE" "\$FLOW_STATE/omarchy-flow-boundary"
 tar xzf /tmp/rigrender-\$RUN_ID.tgz -C "\$RIG_ROOT/.config/omarchy/plugins/\$NAME"
+# A real Omarchy install always has a current theme. Seed the state
+# omarchy-theme-set writes (current/theme, theme.name, background) with the stock
+# tokyo-night theme: current first-party shell plugins (image-picker, lock) read
+# it from HOME/.local/state and log QML warnings when it is missing, which would
+# otherwise read here as plugin warnings.
+CURRENT="\$RIG_ROOT/.local/state/omarchy/current"
+mkdir -p "\$CURRENT"
+ln -nsf /root/omarchy/themes/tokyo-night "\$CURRENT/theme"
+printf 'tokyo-night\n' > "\$CURRENT/theme.name"
+ln -nsf "\$CURRENT/theme/backgrounds/0-liftoff.webp" "\$CURRENT/background"
 
 # A minimal compositor config has no Sway bar, clock, or workspace chrome to
 # leak into the product image. The output itself is the final 16:9 asset size.
