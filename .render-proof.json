@@ -1,25 +1,27 @@
 {
-  "fingerprint": "709fa15b159ad17caea33c7cf5fd541e6a8aa262ddac92f77fa5cd1674f517a9",
-  "sourceCommit": "4548be9c00a77f9812903bee549c4b82ef3c8286",
+  "fingerprint": "d65fda03d4876e24299209b5f87fae34de5e9da9e9161083d3d1769b51a25e04",
+  "sourceCommit": "47e6be252b4474ea870f2ccd73907ca0546695c6",
   "sourceDirty": false,
-  "sourcePackageSha256": "34c3749553e05cbf8919e3692c683ef644990f699d83f2039a807158b8b4dc85",
-  "remotePackageSha256": "34c3749553e05cbf8919e3692c683ef644990f699d83f2039a807158b8b4dc85",
+  "sourcePackageSha256": "739af6e0b01b609414b6dfd219a4e96ac8b54aacbf1836468ae20889f8db3a4e",
+  "remotePackageSha256": "739af6e0b01b609414b6dfd219a4e96ac8b54aacbf1836468ae20889f8db3a4e",
   "rig": "intent-ops-buzz/omarchy-rig",
-  "runId": "flow-boundary-3326633",
-  "rawShellLogSha256": "ab9083086ab26dd540690accdc7fc95d58982766bab740cce597656d151dab71",
+  "runId": "flow-boundary-103636",
+  "rawShellLogSha256": "c641c398fd0f26c54fcce46d8efaccfd58141c872bc7207182c3dbc1ad76777a",
   "packageBoundary": "runtime tree; generated proof receipts, reports, tests, developer scripts, and marketplace preview excluded",
   "evidenceBoundary": "isolated real Omarchy shell and QML under a dedicated headless compositor; live plugin IPC writes through first-party inline widget settings; persisted history verified after a full shell restart; direct full-frame grim capture with no crop or image post-processing",
   "visualInspection": {
     "status": "approved",
-    "previewSha256": "fd448a8cc7c0f698ba44370f79f844b6fcc55726c1c2cdbe76e663274c8b9739",
+    "previewSha256": "319508ffb3ee4874d8941f09efbd60f39104f3d39750fca90cb1b44043104266",
+    "inspector": "Claude (agent) for jeremylongshore",
+    "inspectedAt": "2026-11-15T08:46:49Z",
     "checks": [
       "product value visible at marketplace scale",
       "no primary content clipped",
       "plugin-specific visual identity"
     ]
   },
-  "previewSha256": "fd448a8cc7c0f698ba44370f79f844b6fcc55726c1c2cdbe76e663274c8b9739",
+  "previewSha256": "319508ffb3ee4874d8941f09efbd60f39104f3d39750fca90cb1b44043104266",
   "dimensions": "1280 x 720",
   "nonblackCoverage": 0.769618,
-  "capturedAt": "2026-08-31T22:35:47Z"
+  "capturedAt": "2026-11-15T08:46:40Z"
 }
