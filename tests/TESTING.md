@@ -26,7 +26,7 @@ journeys.step_coverage_min: 100
 ## Installed gates (observational)
 
 L0: @intentsolutions/audit-harness 1.4.0
-L1: pre-push gate lane (13 vendored gates, c28 to c44, in sync with canonical 611efde) + GitHub Actions test/gates workflows
+L1: pre-push gate lane (13 vendored gates, c28 to c44, in sync with canonical f79d8c7) + GitHub Actions test/gates workflows
 L2: ShellCheck, actionlint, vendored Omarchy gates, gitleaks, osv-scanner, npm audit, markdownlint
 L3: node:test + c8 coverage + Stryker mutation + three-run race stability. CRAP is NOT enforced: under harness 1.4.0 crap-score scores zero functions for root-level Model.js and still reports PASS (jeremylongshore/intent-audit-harness#248), and the crap.* thresholds above are policy only until that is fixed
 L4-integration: QML-to-Model contract plus a real first-party settings write on the rig

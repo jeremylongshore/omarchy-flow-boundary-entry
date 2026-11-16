@@ -54,7 +54,7 @@ orphaned.
 - Three consecutive model-suite passes (11 tests each) with zero flake
 - 99.35% mutation score with a 90% blocking floor (151 killed, 2 timed out, 1
   survived; the survivor is the equivalent mutant that empties a catch block)
-- 13 vendored Omarchy gates (c28 to c44), in sync with canonical `611efde`
+- 13 vendored Omarchy gates (c28 to c44), in sync with canonical `f79d8c7`
 - osv-scanner reports 0 advisories; actionlint, ShellCheck, gitleaks and
   markdownlint are clean
 - Rig (omarchy `74de10479d3bf7aa7865408e33219064cfe45432`, Qt 6.12.0): validator
