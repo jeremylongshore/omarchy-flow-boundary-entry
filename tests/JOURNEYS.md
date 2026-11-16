@@ -6,17 +6,18 @@
 Personas: keyboard-first Omarchy operator
 Trigger: operator opens Flow Boundary from the Omarchy bar
 Critical: true
-Linked RTM: REQ-FB-001, REQ-FB-004, REQ-FB-006, REQ-FB-007
+Linked RTM: REQ-FB-001, REQ-FB-004, REQ-FB-006, REQ-FB-007, REQ-FB-009
 
 | # | Step | Layer | Test file | Status |
 |---|---|---|---|---|
 | 1 | Plugin loads in the stock shell | L6 | e2e/buzz.sh | Covered |
 | 2 | Panel opens through IPC | L6 | e2e/buzz.sh | Covered |
 | 3 | Arrive and Leave expose named button roles | L5 | tests/a11y.test.js | Covered |
-| 4 | Selection publishes a bounded event through Omarchy's settings owner | L3, L4 | tests/model.test.js, tests/a11y.test.js, e2e/buzz.sh | Covered |
-| 5 | Timeline renders the event as bounded plain text | L3, L6 | tests/model.test.js, tests/a11y.test.js | Covered |
+| 4 | Left, Right and Enter choose and mark a boundary from the keyboard | L3, L5, L6 | tests/model.test.js, tests/a11y.test.js, scripts/rig-render.sh | Covered |
+| 5 | Selection publishes a bounded event through Omarchy's settings owner | L3, L4 | tests/model.test.js, tests/a11y.test.js, e2e/buzz.sh | Covered |
+| 6 | Timeline renders the event as bounded plain text | L3, L6 | tests/model.test.js, tests/a11y.test.js | Covered |
 
-Coverage: 5/5 steps (100%)
+Coverage: 6/6 steps (100%)
 
 ## Journey: preserve a private bounded history across shell restarts
 

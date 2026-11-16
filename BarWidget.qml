@@ -3,10 +3,8 @@ import qs.Commons
 import qs.Ui
 
 // Bar host. Mirrors the first-party split: this widget owns the bar slot and
-// pill button; Panel.qml owns data, lifecycle, and the popup.
-//
-// TEMPLATE: change moduleName to your plugin id. Everything else in this file
-// is the shape contract the shell expects and should not need edits.
+// pill button; Panel.qml owns data, lifecycle, and the popup. The rest of this
+// file is the shape contract the shell expects.
 BarWidget {
   id: root
   moduleName: "io.github.jeremylongshore.flow-boundary"

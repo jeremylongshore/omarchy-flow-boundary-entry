@@ -29,6 +29,28 @@ omarchy plugin add https://github.com/jeremylongshore/omarchy-flow-boundary-entr
 
 Use the panel's Arrive and Leave actions to create a local boundary record.
 
+## Keys
+
+Click Arrive or Leave, or use the keyboard: Left and Right (or `h` and `l`)
+choose a button, Enter or Space marks it, and Escape closes the panel. The
+highlighted button is the one Enter marks. Text and edges follow the lightness
+of your theme's popup surface, so they stay readable on light themes.
+
+## Where the history is stored
+
+Boundaries are kept in `~/.config/omarchy/shell.json`, in the `eventsJson`
+setting of this widget's entry in the bar layout. Each record is the word
+`arrive` or `leave` and a Unix timestamp, and only the latest 32 are kept. If
+you keep `shell.json` in a dotfiles repository, those timestamps are part of
+what you would commit.
+
+## Preview
+
+`preview.png` is a rig render, not a user screenshot. The rig seeds three
+boundaries (arrive, leave, arrive) into the widget setting, records one more
+through the plugin's own IPC `leave` call, and restarts the shell before the
+capture. A fresh install starts with an empty timeline.
+
 ## Verify
 
 ```bash
@@ -37,6 +59,8 @@ bash scripts/run-plugin-gates.sh
 bash scripts/check-lane-freshness.sh
 bash scripts/rig-verify.sh .
 bash scripts/rig-render.sh . preview.png
+# Optional: render on a light theme
+OMARCHY_RIG_THEME=catppuccin-latte bash scripts/rig-render.sh . /tmp/light.png
 ```
 
 ## Maintainers wanted

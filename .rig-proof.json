@@ -1,14 +1,18 @@
 {
-  "fingerprint": "d65fda03d4876e24299209b5f87fae34de5e9da9e9161083d3d1769b51a25e04",
-  "sourceCommit": "596a5e7f0b4aa5cf02de44727de81826caefe0e3",
+  "fingerprint": "25855225d379d3651302120a69611436a8c058a2d0fd417146da944e90242d52",
+  "sourceCommit": "e81e1322002c01c5486fb83de38b8f9c0c02a3a7",
   "sourceDirty": false,
-  "sourcePackageSha256": "e1d25425cc76ae01c165eb9e522d782c7209238b4952f67ae82b6a1369a936ad",
-  "remotePackageSha256": "e1d25425cc76ae01c165eb9e522d782c7209238b4952f67ae82b6a1369a936ad",
+  "sourcePackageSha256": "45e2a6ebbd411b80528976955311282b5b34b573442269e9a50aa92b2bb0b379",
+  "remotePackageSha256": "45e2a6ebbd411b80528976955311282b5b34b573442269e9a50aa92b2bb0b379",
   "rig": "intent-ops-buzz/omarchy-rig",
+  "rigVersions": {
+    "omarchy": "74de10479d3bf7aa7865408e33219064cfe45432",
+    "qt": "6.12.0"
+  },
   "packageBoundary": "validation tree; generated proof receipts, reports, tests, dependencies, and marketplace preview excluded",
   "evidenceBoundary": "real Omarchy validator and qmllint; no live compositor render",
   "omarchyPluginValidate": 0,
   "qmllintErrors": 0,
-  "validatedAtEpoch": 1794732340,
-  "validatedAt": "2026-11-15T08:45:40Z"
+  "validatedAtEpoch": 1794787754,
+  "validatedAt": "2026-11-16T00:09:14Z"
 }

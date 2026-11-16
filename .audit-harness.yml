@@ -1,4 +1,6 @@
-# Omarchy plugin: QML frontend plus a local command-line state helper.
+# Omarchy plugin: a QML bar widget with no helper and no command-line tool.
+# The cli pin is kept on purpose, not because a CLI ships: it keeps the
+# audit-harness smoke-test gate (tests/smoke.test.js) in this profile.
 classify_pins:
   - frontend
   - cli

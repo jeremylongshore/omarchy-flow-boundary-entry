@@ -25,16 +25,16 @@ journeys.step_coverage_min: 100
 
 ## Installed gates (observational)
 
-L0: @intentsolutions/audit-harness 1.3.1
-L1: pre-push gate lane + GitHub Actions test/gates workflows
-L2: ShellCheck, actionlint, vendored Omarchy gates, gitleaks, npm audit
-L3: node:test + c8 coverage + Stryker mutation + CRAP + three-run race stability
-L4-integration: QML-to-Model contract plus a real first-party settings write on Buzz
+L0: @intentsolutions/audit-harness 1.4.0
+L1: pre-push gate lane (13 vendored gates, c28 to c44, in sync with canonical 611efde) + GitHub Actions test/gates workflows
+L2: ShellCheck, actionlint, vendored Omarchy gates, gitleaks, osv-scanner, npm audit, markdownlint
+L3: node:test + c8 coverage + Stryker mutation + three-run race stability. CRAP is NOT enforced: under harness 1.4.0 crap-score scores zero functions for root-level Model.js and still reports PASS (jeremylongshore/intent-audit-harness#248), and the crap.* thresholds above are policy only until that is fixed
+L4-integration: QML-to-Model contract plus a real first-party settings write on the rig
 L5-security: bounded settings input, no plugin-owned mutable state path, no helper interpreter
-L5-a11y: QML accessibility names/roles and bounded plain-text assertions
+L5-a11y: QML accessibility names/roles, keyboard activation wiring, light-surface contrast contract, and bounded plain-text assertions
 L6-smoke: stock QML-to-Model contract tests
-L6-e2e: Buzz validator, qmllint, live settings write, full shell restart, IPC open, and screenshot
-L6-visual: curated 1280x720 live render inspected before submission
+L6-e2e: rig validator, qmllint, live settings write, full shell restart, IPC open, keyboard Enter and Right then Enter through the live shell, and screenshot
+L6-visual: curated 1280x720 live render on tokyo-night, plus a catppuccin-latte render for the light-surface check, inspected before submission
 L7-UAT: primary boundary journey mapped in tests/JOURNEYS.md
 
 ## Frameworks (observational)
@@ -42,13 +42,13 @@ L7-UAT: primary boundary journey mapped in tests/JOURNEYS.md
 unit: node:test
 coverage: c8 12
 mutation: Stryker 10
-policy: @intentsolutions/audit-harness 1.3.1
+policy: @intentsolutions/audit-harness 1.4.0
 e2e: scripts/rig-verify.sh + scripts/rig-render.sh on intent-ops-buzz/omarchy-rig
 
 ## Last audit (observational)
 
 date: 2026-08-29
-grade: A (96/100)
+grade: A (96/100) (last scored then; counts and evidence were re-derived on 2026-11-15 for 0.2.2 but the grade was not re-scored)
 auditor: audit-tests + omarchy-ship
 p0_gaps: 0 after implementation
 p1_gaps: 0 after QML-specific adaptation
@@ -56,10 +56,10 @@ p2_gaps: 0
 
 ## Traceability (observational, updated by audit-tests)
 
-rtm.total_requirements: 8
+rtm.total_requirements: 10
 rtm.by_moscow:
-  must: 7 (7 covered, 0 uncovered)
-  should: 1 (1 covered, 0 uncovered)
+  must: 8 (8 covered, 0 uncovered)
+  should: 2 (2 covered, 0 uncovered)
   could: 0
   wont: 0
 rtm.orphaned_tests: 0
@@ -71,10 +71,13 @@ journeys.partial: 0
 
 ## Hash manifest
 
+<!-- The indented list below is the audit-tests manifest format, so lint is paused for it. -->
+<!-- markdownlint-disable MD007 MD032 -->
 version: 1
-last_init: 2026-08-29 during the requested test-system implementation
+last_init: 2026-11-15 re-pinned with the 0.2.2 documentation corrections (first pinned 2026-08-29)
 protected_files:
   - tests/TESTING.md policy sections
   - tests/RTM.md MoSCoW tiers
   - tests/JOURNEYS.md criticality
   - stryker.config.json thresholds
+<!-- markdownlint-enable MD007 MD032 -->

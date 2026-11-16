@@ -30,11 +30,16 @@ HOST="${OMARCHY_RIG_HOST:-intent-ops-buzz}"
 CONTAINER="${OMARCHY_RIG_CONTAINER:-omarchy-rig}"
 RES="${OMARCHY_RIG_RESOLUTION:-1280x720}"
 SCALE="${OMARCHY_RIG_SCALE:-2}"
+# The stock theme to seed. tokyo-night is dark; pass catppuccin-latte, white or
+# flexoki-light to check a light surface. It is spliced into the remote script,
+# so it must be a plain theme name.
+THEME="${OMARCHY_RIG_THEME:-tokyo-night}"
 
 command -v jq >/dev/null 2>&1 || { echo "rig-render: jq is required" >&2; exit 2; }
 command -v identify >/dev/null 2>&1 || { echo "rig-render: ImageMagick identify is required" >&2; exit 2; }
 command -v convert >/dev/null 2>&1 || { echo "rig-render: ImageMagick convert is required" >&2; exit 2; }
 [[ -f "$TARGET/manifest.json" ]] || { echo "rig-render: no manifest.json in $TARGET" >&2; exit 2; }
+[[ "$THEME" =~ ^[a-z0-9][a-z0-9-]*$ ]] || { echo "rig-render: OMARCHY_RIG_THEME must be a plain theme name" >&2; exit 2; }
 
 MOD="$(jq -r '.id // empty' "$TARGET/manifest.json")"
 [[ -n "$MOD" ]] || { echo "rig-render: manifest.json has no id" >&2; exit 2; }
@@ -98,7 +103,7 @@ trap 'rm -f "$TGZ" "$REMOTE"' EXIT
 cat > "$REMOTE" <<REMOTE_EOF
 #!/bin/sh
 set -eu
-MOD="$MOD"; NAME="$NAME"; RUN_ID="$RUN_ID"; RES="$RES"; SCALE="$SCALE"
+MOD="$MOD"; NAME="$NAME"; RUN_ID="$RUN_ID"; RES="$RES"; SCALE="$SCALE"; THEME="$THEME"
 RUNTIME=/tmp/rigrender-runtime-\$RUN_ID
 RIG_ROOT=/tmp/rigrender-home-\$RUN_ID
 FLOW_STATE=/tmp/rigrender-state-\$RUN_ID
@@ -106,10 +111,11 @@ SWAY_CONFIG=/tmp/rigrender-sway-\$RUN_ID.conf
 SWAY_LOG=/tmp/rigrender-sway-\$RUN_ID.log
 QS_LOG=/tmp/rigrender-qs-\$RUN_ID.log
 SHOT=/tmp/rigrender-\$RUN_ID.png
-QS_PID=""; SWAY_PID=""
+QS_PID=""; SWAY_PID=""; KB_PID=""
 cleanup() {
   [ -z "\$QS_PID" ] || kill "\$QS_PID" 2>/dev/null || true
   [ -z "\$SWAY_PID" ] || kill "\$SWAY_PID" 2>/dev/null || true
+  [ -z "\$KB_PID" ] || kill "\$KB_PID" 2>/dev/null || true
 }
 trap cleanup EXIT INT TERM
 
@@ -125,15 +131,18 @@ chmod 700 "\$RUNTIME" "\$RIG_ROOT" "\$RIG_ROOT/.config" "\$RIG_ROOT/.config/omar
   "\$FLOW_STATE" "\$FLOW_STATE/omarchy-flow-boundary"
 tar xzf /tmp/rigrender-\$RUN_ID.tgz -C "\$RIG_ROOT/.config/omarchy/plugins/\$NAME"
 # A real Omarchy install always has a current theme. Seed the state
-# omarchy-theme-set writes (current/theme, theme.name, background) with the stock
-# tokyo-night theme: current first-party shell plugins (image-picker, lock) read
-# it from HOME/.local/state and log QML warnings when it is missing, which would
-# otherwise read here as plugin warnings.
+# omarchy-theme-set writes (current/theme, theme.name, background) with a stock
+# theme, tokyo-night unless OMARCHY_RIG_THEME says otherwise: current
+# first-party shell plugins (image-picker, lock) read it from HOME/.local/state
+# and log QML warnings when it is missing, which would otherwise read here as
+# plugin warnings.
+[ -d "/root/omarchy/themes/\$THEME" ] || { echo "rig-render: no stock theme named \$THEME on the rig" >&2; exit 1; }
 CURRENT="\$RIG_ROOT/.local/state/omarchy/current"
 mkdir -p "\$CURRENT"
-ln -nsf /root/omarchy/themes/tokyo-night "\$CURRENT/theme"
-printf 'tokyo-night\n' > "\$CURRENT/theme.name"
-ln -nsf "\$CURRENT/theme/backgrounds/0-liftoff.webp" "\$CURRENT/background"
+ln -nsf "/root/omarchy/themes/\$THEME" "\$CURRENT/theme"
+printf '%s\n' "\$THEME" > "\$CURRENT/theme.name"
+BACKGROUND=\$(find "/root/omarchy/themes/\$THEME/backgrounds" -maxdepth 1 -type f 2>/dev/null | sort | head -1)
+if [ -n "\$BACKGROUND" ]; then ln -nsf "\$CURRENT/theme/backgrounds/\${BACKGROUND##*/}" "\$CURRENT/background"; fi
 
 # A minimal compositor config has no Sway bar, clock, or workspace chrome to
 # leak into the product image. The output itself is the final 16:9 asset size.
@@ -156,6 +165,16 @@ done
 export WAYLAND_DISPLAY="\${WAYLAND_SOCKET##*/}"
 export SWAYSOCK=\$(find "\$RUNTIME" -maxdepth 1 -type s -name 'sway-ipc.*.sock' | head -1)
 [ -n "\$SWAYSOCK" ] || { echo "rig-render: isolated Sway IPC socket did not start" >&2; exit 1; }
+
+# A headless seat starts with no keyboard, so Qt never creates a wl_keyboard and
+# would never see a key, however the key is sent. A real session always has one.
+# Hold a virtual keyboard open from before the shell starts (the F24 press is
+# harmless and the sleep keeps the device alive) so the keyboard step below
+# exercises the plugin's key handling and not the rig's missing hardware.
+command -v wtype >/dev/null 2>&1 || { echo "rig-render: wtype is required on the rig for the keyboard proof" >&2; exit 1; }
+env XDG_RUNTIME_DIR="\$RUNTIME" WAYLAND_DISPLAY="\$WAYLAND_DISPLAY" wtype -k F24 -s 900000 >/dev/null 2>&1 &
+KB_PID=\$!
+sleep 1
 
 # Seed the same bounded inline widget setting the real plugin reads. This keeps
 # the screenshot story populated without a test-only runtime path or helper.
@@ -205,6 +224,39 @@ env HOME="\$RIG_ROOT" XDG_RUNTIME_DIR="\$RUNTIME" XDG_STATE_HOME="\$FLOW_STATE" 
 sleep 8
 [ -d "/proc/\$QS_PID" ] || { echo "rig-render: isolated Quickshell exited after IPC" >&2; tail -80 "\$QS_LOG" >&2; exit 1; }
 
+# Capture the dedicated 1280x720 output directly. Region capture on the pixman
+# headless backend can return only the latest damaged fragments, so the rig uses
+# a purpose-sized 16:9 output and a full-frame capture: no crop, resize, or
+# fabricated post-process, and no intermittent partial-frame screenshots. The
+# capture comes before the keyboard step so the preview shows the panel as it
+# opens, not the result of a test keystroke.
+grim "\$SHOT" 2>/dev/null
+
+# Drive the real keyboard path through the live shell, with a virtual keyboard
+# on the isolated seat. Enter marks the highlighted button (Arrive at first),
+# and Right then Enter marks Leave. Both write through the first-party settings
+# owner, so the persisted ledger must grow by exactly one record each time.
+keyed() {
+  env HOME="\$RIG_ROOT" XDG_RUNTIME_DIR="\$RUNTIME" XDG_STATE_HOME="\$FLOW_STATE" \
+    WAYLAND_DISPLAY="\$WAYLAND_DISPLAY" SWAYSOCK="\$SWAYSOCK" wtype "\$@"
+}
+ledger() {
+  jq -r --arg mod "\$MOD" '.bar.layout.right[] | select(.id == \$mod) | .eventsJson // empty' \
+    "\$RIG_ROOT/.config/omarchy/shell.json"
+}
+keyed -k Return
+sleep 3
+ledger | jq -e 'length == 5 and .[-1].kind == "arrive"' >/dev/null \
+  || { echo "rig-render: Enter did not mark the highlighted Arrive button" >&2; exit 1; }
+keyed -k Right
+sleep 1
+keyed -k Return
+sleep 3
+ledger | jq -e 'length == 6 and .[-2].kind == "arrive" and .[-1].kind == "leave"' >/dev/null \
+  || { echo "rig-render: Right then Enter did not mark the Leave button" >&2; exit 1; }
+echo "===KEYBOARD=== Enter marked Arrive; Right then Enter marked Leave"
+[ -d "/proc/\$QS_PID" ] || { echo "rig-render: isolated Quickshell exited after the keyboard step" >&2; tail -80 "\$QS_LOG" >&2; exit 1; }
+
 echo "===QML WARNINGS==="
 # DBus, PipeWire, UPower, Polkit, and Hyprland are deliberately absent from the
 # isolated headless session. Fail on QML/scene diagnostics and crashes, which
@@ -212,13 +264,10 @@ echo "===QML WARNINGS==="
 # unrelated service warnings visible in the retained raw log.
 grep -a -iE "(WARN|ERROR).*(qml|scene)|(qml|scene).*(WARN|ERROR)|cannot assign|is not a type|unable to|handler was registered|quickshell has crashed" "\$QS_LOG" \
   | grep -avE "libEGL|MESA|ZINK|failed to get driver|failed to create dri2" | head -20
-
-# Capture the dedicated 1280x720 output directly. Region capture on the pixman
-# headless backend can return only the latest damaged fragments, so the rig uses
-# a purpose-sized 16:9 output and a full-frame capture: no crop, resize, or
-# fabricated post-process, and no intermittent partial-frame screenshots.
-grim "\$SHOT" 2>/dev/null
 echo "===RUN=== \$RUN_ID"
+echo "===OMARCHY=== \$(git -C /root/omarchy rev-parse HEAD 2>/dev/null)"
+echo "===QT=== \$(/usr/lib/qt6/bin/qmllint --version 2>/dev/null | head -1)"
+echo "===QUICKSHELL=== \$(qs --version 2>/dev/null | head -1)"
 echo "===LOGSHA=== \$(sha256sum "\$QS_LOG" | awk '{print \$1}')"
 echo "===PACKAGE=== \$(sha256sum /tmp/rigrender-\$RUN_ID.tgz | awk '{print \$1}')"
 echo "===SHOT=== \$(ls -l "\$SHOT" 2>/dev/null | awk '{print \$5}') bytes"
@@ -229,17 +278,26 @@ RESULT="$(ssh -o BatchMode=yes "$HOST" "docker cp /tmp/rigrender-$RUN_ID.tgz $CO
   docker cp /tmp/rigrender-$RUN_ID.sh $CONTAINER:/tmp/ >/dev/null && \
   docker exec $CONTAINER sh /tmp/rigrender-$RUN_ID.sh" 2>&1)"
 
-WARNINGS="$(printf '%s' "$RESULT" | sed -n '/===QML WARNINGS===/,/===SHOT===/p' | grep -vE '===' || true)"
+WARNINGS="$(printf '%s' "$RESULT" | sed -n '/===QML WARNINGS===/,/===RUN===/p' | grep -vE '===' || true)"
 SIZE="$(printf '%s' "$RESULT" | grep -oE '===SHOT=== [0-9]+' | grep -oE '[0-9]+' || true)"
 REMOTE_SHA="$(printf '%s' "$RESULT" | grep -oE '===PACKAGE=== [a-f0-9]{64}' | awk '{print $2}' || true)"
 RAW_LOG_SHA="$(printf '%s' "$RESULT" | grep -oE '===LOGSHA=== [a-f0-9]{64}' | awk '{print $2}' || true)"
 REMOTE_RUN_ID="$(printf '%s' "$RESULT" | grep -oE '===RUN=== [a-z0-9-]+' | awk '{print $2}' || true)"
+KEYBOARD_OK="$(printf '%s' "$RESULT" | grep -c '^===KEYBOARD=== Enter marked Arrive; Right then Enter marked Leave$' || true)"
+OMARCHY_REV="$(printf '%s' "$RESULT" | grep -oE '^===OMARCHY=== [a-f0-9]{40}$' | awk '{print $2}' || true)"
+QT_VERSION="$(printf '%s' "$RESULT" | sed -n 's/^===QT=== qmllint \([0-9][0-9.]*\)$/\1/p' | head -1 || true)"
+QS_VERSION="$(printf '%s' "$RESULT" | sed -n 's/^===QUICKSHELL=== Quickshell \([0-9][0-9.]*\) .*/\1/p' | head -1 || true)"
 
 if [[ -n "$WARNINGS" ]]; then
   echo "rig-render: the shell reported problems loading this plugin:"
   printf '%s\n' "$WARNINGS" | sed 's/^/  /'
 fi
 
+if [[ "$KEYBOARD_OK" != "1" ]]; then
+  echo "rig-render: the keyboard step did not complete" >&2
+  printf '%s\n' "$RESULT" >&2
+  exit 1
+fi
 if [[ -z "$SIZE" || "$SIZE" -lt 4000 ]]; then
   echo "rig-render: no usable screenshot came back (size=${SIZE:-none})" >&2
   printf '%s\n' "$RESULT" >&2
@@ -281,14 +339,20 @@ jq -n --arg fp "$FP" --arg commit "$SOURCE_COMMIT" --argjson dirty "$SOURCE_DIRT
   --arg run "$REMOTE_RUN_ID" --arg logSha "$RAW_LOG_SHA" \
   --arg sha "$PREVIEW_SHA" --arg dimensions "${DIMS/x/ x }" --arg coverage "$COVERAGE" \
   --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --arg theme "$THEME" --arg omarchy "${OMARCHY_REV:-unknown}" --arg qt "${QT_VERSION:-unknown}" \
+  --arg quickshell "${QS_VERSION:-unknown}" \
   '{fingerprint:$fp,sourceCommit:$commit,sourceDirty:$dirty,
     sourcePackageSha256:$archive,remotePackageSha256:$remote,rig:$rig,runId:$run,rawShellLogSha256:$logSha,
     packageBoundary:"runtime tree; generated proof receipts, reports, tests, developer scripts, and marketplace preview excluded",
     evidenceBoundary:"isolated real Omarchy shell and QML under a dedicated headless compositor; live plugin IPC writes through first-party inline widget settings; persisted history verified after a full shell restart; direct full-frame grim capture with no crop or image post-processing",
+    rigVersions:{omarchy:$omarchy,qt:$qt,quickshell:$quickshell},theme:$theme,
+    keyboard:{verified:true,steps:["Enter marked the highlighted Arrive button","Right then Enter marked the Leave button"]},
     visualInspection:{status:"pending",previewSha256:$sha,checks:[]},
     previewSha256:$sha,dimensions:$dimensions,nonblackCoverage:($coverage|tonumber),capturedAt:$at}' \
   > "$TARGET/.render-proof.json"
 
-echo "rig-render: wrote $OUT (${SIZE} bytes on the rig, ${DIMS}, coverage ${COVERAGE})"
+echo "rig-render: wrote $OUT (${SIZE} bytes on the rig, ${DIMS}, coverage ${COVERAGE}, theme ${THEME})"
+echo "rig-render: omarchy ${OMARCHY_REV:-unknown}, qt ${QT_VERSION:-unknown}, quickshell ${QS_VERSION:-unknown}"
+echo "rig-render: keyboard step verified through the live shell"
 echo "rig-render: loaded clean, no QML warnings"
 exit 0
