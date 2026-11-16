@@ -17,7 +17,10 @@ and gate c28 refuses them.
 
 ## [Unreleased]
 
-Nothing yet.
+### Changed
+
+- Refresh the vendored gate lane to canonical `f79d8c7`, which adds the Perl arm
+  to gate c42. Tooling only: the shipped tree and its receipts are unchanged.
 
 ## [0.2.2] - 2026-11-15
 
