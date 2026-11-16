@@ -16,7 +16,9 @@ Quickshell process. Security-sensitive changes must preserve these rules:
 - Network and local inputs are bounded by count and bytes.
 - Untrusted text renders as plain text within explicit bounds.
 - Runtime dependencies are limited to software shipped by stock Omarchy.
-- Persistent local state uses a descriptor-bound lifecycle.
+- Persistent state is limited to bounded, timestamp-only records that Omarchy's
+  own inline widget-settings API writes. The plugin opens no state pathname of
+  its own and ships no helper.
 
 Passing static gates is not a security audit. Applicable releases also require
 review and a clean real-shell verification on the maintainer rig.

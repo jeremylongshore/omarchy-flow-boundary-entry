@@ -57,6 +57,26 @@ test("marketplace preview is a focused 16:9 live-render composition", () => {
   assert.doesNotMatch(rig, /grim -g/)
 })
 
+test("rig render proves the keyboard path, the theme and the rig versions", () => {
+  // RTM: REQ-FB-009, REQ-FB-010
+  const rig = fs.readFileSync(path.join(root, "scripts", "rig-render.sh"), "utf8")
+  assert.match(rig, /OMARCHY_RIG_THEME:-tokyo-night/)
+  assert.match(rig, /OMARCHY_RIG_THEME must be a plain theme name/)
+  assert.match(rig, /wtype "\\\$@"/)
+  assert.match(rig, /Enter did not mark the highlighted Arrive button/)
+  assert.match(rig, /Right then Enter did not mark the Leave button/)
+  assert.match(rig, /rigVersions:\{omarchy:\$omarchy,qt:\$qt,quickshell:\$quickshell\}/)
+  const verify = fs.readFileSync(path.join(root, "scripts", "rig-verify.sh"), "utf8")
+  assert.match(verify, /rigVersions:\{omarchy:\$omarchy, qt:\$qt\}/)
+  // The screenshot is taken before the keystrokes, so the preview shows the
+  // panel as it opens rather than the result of a test keypress.
+  assert.ok(rig.indexOf('grim "\\$SHOT"') < rig.indexOf("keyed -k Return"))
+  // A headless seat has no keyboard, so a virtual one must be attached before
+  // the shell starts or Qt never creates a wl_keyboard and no key can arrive.
+  assert.ok(rig.indexOf("wtype -k F24 -s") > 0)
+  assert.ok(rig.indexOf("wtype -k F24 -s") < rig.indexOf("qs -p /root/omarchy/shell >"))
+})
+
 test("QML qualifies Omarchy's palette as Commons.Color, never bare Color", () => {
   // Qt 6.12 introduces its own Color type; omarchy docs/omarchy-shell.md
   // (Theme tokens) requires plugins to import qs.Commons with an alias.

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.jeremylongshore.flow-boundary",
   "name": "Flow Boundary",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "author": "Jeremy Longshore",
   "license": "MIT",
   "description": "Mark a boundary when you arrive at focused work or leave it behind. Flow Boundary puts Arrive and Leave actions in the Omarchy bar, changes the pill from FLOW to PAUSE, and shows your eight newest color-coded transitions with ages that refresh every 30 seconds. It retains only the latest 32 timestamp-only records in local widget settings, survives shell restarts, and runs without a helper. Nothing is inferred from calendars, projects, apps or notifications; no account, telemetry, or network use.",

@@ -36,5 +36,14 @@ function pillText(rows) { return rows && rows.length ? (rows[rows.length-1].kind
 function tooltipText(rows) { return rows && rows.length ? "Last boundary: " + rows[rows.length-1].kind : "Mark an intentional context boundary" }
 function kindHue(kind) { return kind === "arrive" ? 0.43 : 0.075 }
 function kindLabel(kind) { return kind === "arrive" ? "CONTEXT OPENED" : "CONTEXT CLOSED" }
+// Text and edges that are light on a dark surface vanish on a light one (1.3 to
+// 1.8:1 on catppuccin-latte), so the panel picks the lightness for the surface
+// it is drawn on. Exactly 0.5 counts as dark, and a missing reading stays dark.
+function toneLightness(dark, light, surfaceLightness) { return Number(surfaceLightness) > 0.5 ? light : dark }
+// Arrive is choice 0 and Leave is choice 1. Forward lands on Leave and back on
+// Arrive. The two ends do not wrap, so a held key rests on a button instead of
+// flipping it, and a zero step stays where it is.
+function moveChoice(choice, step) { return step > 0 ? 1 : step < 0 ? 0 : choice === 1 ? 1 : 0 }
+function choiceKind(choice) { return choice === 1 ? "leave" : "arrive" }
 /* Stryker disable next-line ConditionalExpression,StringLiteral: QML has no CommonJS module; Node does. */
-if (typeof module !== "undefined") module.exports={MAX_EVENTS,MAX_STORED_BYTES,storedEvents,parse,appendEvent,pillText,tooltipText,kindHue,kindLabel}
+if (typeof module !== "undefined") module.exports={MAX_EVENTS,MAX_STORED_BYTES,storedEvents,parse,appendEvent,pillText,tooltipText,kindHue,kindLabel,toneLightness,moveChoice,choiceKind}
